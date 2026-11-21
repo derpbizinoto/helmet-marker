@@ -296,7 +296,136 @@
         return { items: items, skipped: skipped };
     }
 
+    // ---------- fase 3 (parte B): novos marcadores recebem cor numa segunda etapa ----------
+    // items: o que foi criado ({ frame ou key, name, colorIndex }); records: marcadores relidos;
+    // before: { chave: true } dos que já existiam. Casa pelo frame + nome (cada um uma vez só) e
+    // devolve [{ record, color }] só para os que estão com outra cor.
+    function planColorsForNew(items, records, before, keyOf) {
+        keyOf = keyOf || function (x) { return x.startFrame + "|" + String(x.name || ""); };
+        var pool = {};
+        (records || []).forEach(function (r) {
+            if (before && before[r.key]) return;
+            var k = keyOf(r);
+            (pool[k] = pool[k] || []).push(r);
+        });
+        var plan = [];
+        (items || []).forEach(function (it) {
+            if (typeof it.colorIndex !== "number") return;
+            var list = pool[it.matchKey !== undefined ? it.matchKey : it.frame + "|" + String(it.name || "")];
+            var r = list && list.shift();
+            if (r && r.colorIndex !== it.colorIndex) plan.push({ record: r, color: it.colorIndex });
+        });
+        return plan;
+    }
+
+    // ---------- copiar para outra sequência ----------
+    // records: marcadores da sequência atual (startTicks, durationFrames). fromTPF/toTPF: ticks
+    // por frame de cada sequência. O tempo é o mesmo contado do início das duas sequências; com
+    // taxas diferentes, cai no frame mais próximo do destino.
+    function planCopy(records, fromTPF, toTPF) {
+        if (!(fromTPF > 0) || !(toTPF > 0)) throw new Error("Ticks por frame inválido: " + toTPF);
+        return records.slice().sort(function (a, b) { return a.startTicks - b.startTicks; }).map(function (r) {
+            return {
+                frame: Math.round(r.startTicks / toTPF),
+                durationFrames: Math.round((r.durationFrames || 0) * fromTPF / toTPF),
+                name: r.name, comments: r.comments, type: r.type, colorIndex: r.colorIndex
+            };
+        });
+    }
+
+    // ---------- marcadores entre o clipe e a sequência ----------
+    // clip: { startTicks, endTicks (na sequência), inTicks, outTicks (na mídia), speed, reversed }
+    // Marcador do clipe fica no tempo da mídia; na sequência ele aparece em
+    //   início do clipe + (tempo do marcador − ponto de entrada do clipe).
+    // Clipe com velocidade alterada ou invertido fica de fora (a conta muda e não dá para conferir).
+    function clipUsable(clip) {
+        return !clip.reversed && (clip.speed === undefined || clip.speed === null || Math.abs(clip.speed - 1) < 1e-6);
+    }
+
+    // clipMarkers: [{ startTicks, durationTicks, name, comments, type, colorIndex }] (tempo da mídia)
+    // Devolve { items: [{ frame, durationFrames, … }], outside } — outside = marcadores do clipe
+    // que estão na parte cortada (fora do trecho usado na timeline).
+    function clipToSequence(clipMarkers, clip, seqTPF) {
+        var items = [], outside = 0;
+        (clipMarkers || []).forEach(function (m) {
+            if (m.startTicks < clip.inTicks || m.startTicks >= clip.outTicks) { outside++; return; }
+            var seqTicks = clip.startTicks + (m.startTicks - clip.inTicks);
+            var durTicks = Math.min(m.durationTicks || 0, clip.outTicks - m.startTicks);
+            items.push({
+                frame: Math.round(seqTicks / seqTPF),
+                durationFrames: Math.round(durTicks / seqTPF),
+                name: m.name, comments: m.comments, type: m.type, colorIndex: m.colorIndex
+            });
+        });
+        return { items: items, outside: outside };
+    }
+
+    // records: marcadores da sequência. Só os que caem dentro do clipe na timeline.
+    // Devolve [{ ticks, durationTicks, … }] no tempo da mídia (matchKey para a cor depois).
+    function sequenceToClip(records, clip, seqTPF) {
+        var items = [];
+        (records || []).forEach(function (r) {
+            if (r.startTicks < clip.startTicks || r.startTicks >= clip.endTicks) return;
+            var ticks = clip.inTicks + (r.startTicks - clip.startTicks);
+            var durTicks = Math.min((r.durationFrames || 0) * seqTPF, clip.endTicks - r.startTicks);
+            items.push({
+                ticks: ticks, durationTicks: durTicks,
+                name: r.name, comments: r.comments, type: r.type, colorIndex: r.colorIndex,
+                matchKey: ticks + "|" + String(r.name || "")
+            });
+        });
+        return items;
+    }
+
+    // Tira os que já existem no clipe (mesmo nome e menos de meio frame de diferença).
+    function skipExistingTicks(items, existing, seqTPF) {
+        var kept = (items || []).filter(function (it) {
+            return !(existing || []).some(function (m) {
+                return String(m.name || "") === String(it.name || "") && Math.abs(m.startTicks - it.ticks) < seqTPF / 2;
+            });
+        });
+        return { items: kept, skipped: items.length - kept.length };
+    }
+
+    // ---------- checklist ----------
+    // "Feito" = o nome começa com ✓ (aparece igual na timeline e em qualquer exportação).
+    var DONE_MARK = "✓ ";
+    function isDone(r) { return /^\s*✓/.test(String(r.name || "")); }
+    function stripDone(name) { return String(name || "").replace(/^\s*✓\s*/, ""); }
+
+    function planDone(records, done) {
+        var plan = [];
+        records.forEach(function (r) {
+            if (isDone(r) === !!done) return;
+            plan.push({ record: r, name: done ? DONE_MARK + stripDone(r.name) : stripDone(r.name) });
+        });
+        return plan;
+    }
+
+    // Progresso geral e por cor: { done, total, byColor: [{ index, done, total }] } (ordem do índice)
+    function progress(records) {
+        var by = {}, done = 0;
+        (records || []).forEach(function (r) {
+            var b = by[r.colorIndex] = by[r.colorIndex] || { index: r.colorIndex, done: 0, total: 0 };
+            b.total++;
+            if (isDone(r)) { b.done++; done++; }
+        });
+        var byColor = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.index - b.index; });
+        return { done: done, total: (records || []).length, byColor: byColor };
+    }
+
     return {
+        planColorsForNew: planColorsForNew,
+        planCopy: planCopy,
+        clipUsable: clipUsable,
+        clipToSequence: clipToSequence,
+        sequenceToClip: sequenceToClip,
+        skipExistingTicks: skipExistingTicks,
+        DONE_MARK: DONE_MARK,
+        isDone: isDone,
+        stripDone: stripDone,
+        planDone: planDone,
+        progress: progress,
         planCutMarkers: planCutMarkers,
         planDuration: planDuration,
         planDistribute: planDistribute,

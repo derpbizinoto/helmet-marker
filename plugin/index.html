@@ -361,6 +361,43 @@
             <div class="hint">Um marcador no começo de cada clipe, numerado (Corte 01, Corte 02…). Pula o fim da sequência e os cortes que já têm marcador.</div>
         </section>
 
+        <!-- ================= sequências e clipes ================= -->
+        <section class="card" data-card="seqclip">
+            <div class="card-title">Sequências e clipes</div>
+            <div class="group-label">Copiar para outra sequência</div>
+            <div class="edit-row">
+                <select id="copyTarget" class="input grow"></select>
+                <div role="button" id="btnSeqRefresh" class="btn btn-ghost btn-sm">Atualizar lista</div>
+                <div role="button" id="btnCopy" class="btn btn-primary btn-sm">Copiar</div>
+                <span class="preview" id="pvCopy"></span>
+            </div>
+            <div class="hint">Copia os selecionados (sem seleção, todos os da lista) para o mesmo tempo, contado do início da sequência de destino. Os que já existem lá ficam de fora.</div>
+
+            <div class="group-label">Clipe e sequência</div>
+            <div class="edit-row">
+                <div role="button" id="btnClipToSeq" class="btn btn-primary btn-sm">Trazer do clipe</div>
+                <div role="button" id="btnSeqToClip" class="btn btn-secondary btn-sm">Enviar para o clipe</div>
+            </div>
+            <div class="hint">Selecione um ou mais clipes na timeline antes. Trazer: os marcadores do clipe aparecem na sequência, em cima do clipe. Enviar: os marcadores selecionados (sem seleção, todos) que estão em cima do clipe passam para o próprio clipe. Clipes com velocidade alterada ficam de fora.</div>
+        </section>
+
+        <!-- ================= checklist e legenda ================= -->
+        <section class="card" data-card="checklist">
+            <div class="card-title">Checklist e legenda</div>
+            <div class="edit-row">
+                <div role="button" id="btnDone" class="btn btn-primary btn-sm">Marcar como feito</div>
+                <div role="button" id="btnUndone" class="btn btn-secondary btn-sm">Desmarcar</div>
+                <div role="button" id="btnSelPending" class="btn btn-ghost btn-sm">Selecionar pendentes</div>
+                <div role="button" id="btnSelDone" class="btn btn-ghost btn-sm">Selecionar feitos</div>
+            </div>
+            <div class="counts" id="checkProgress"></div>
+            <div class="hint">Feito = o nome ganha "✓" na frente (aparece igual na timeline e nas exportações).</div>
+
+            <div class="group-label">Legenda das cores</div>
+            <div id="legendRows"></div>
+            <div class="hint">Escreva o que cada cor significa (ex.: Vermelho = corrigir). Aparece no progresso acima e ao parar o mouse nas cores do filtro.</div>
+        </section>
+
         <!-- ================= exportar ================= -->
         <section class="card" data-card="export">
             <div class="card-title">Exportar</div>

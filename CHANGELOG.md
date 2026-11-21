@@ -2,6 +2,9 @@
 
 ## 0.3.0 — produtividade e importação (fases 2 e 3)
 
+- Copiar marcadores para outra sequência do projeto (mesmo tempo contado do início; com outra taxa de quadros, cai no frame mais próximo).
+- Trazer os marcadores do clipe selecionado para a sequência (na posição do clipe) e enviar marcadores da sequência para o clipe.
+- Checklist: marcar como feito (✓ no nome), selecionar pendentes ou feitos, progresso geral e por cor. Legenda das cores (o que cada cor significa).
 - Importar marcadores de arquivo ou de uma lista colada: lista de tempos (inclusive capítulos do YouTube), CSV (o do Helmet Marker, o "Exportar marcadores" do Premiere e planilhas), legenda SRT, EDL (marcadores LOC do Resolve/Avid, ou um por evento) e JSON. Prévia antes de importar, avisos das linhas ignoradas, opção de pular os que já existem. Um Ctrl+Z desfaz (dois quando o arquivo traz cores).
 - Criar um marcador no começo de cada clipe (só vídeo, só áudio ou os dois), numerado.
 - Exportar também lista de revisão ("1. timecode — comentário"), texto simples e JSON.

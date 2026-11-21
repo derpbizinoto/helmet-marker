@@ -56,7 +56,10 @@
         scrollSeen: false,
         // fase 3
         impFileName: "",      // nome do arquivo aberto (ajuda a reconhecer o formato)
-        impSkip: true         // pular os que já existem (mesmo frame e nome)
+        impSkip: true,        // pular os que já existem (mesmo frame e nome)
+        sequences: null,      // outras sequências do projeto (null = ainda não lidas)
+        sequencesFor: "",     // id da sequência ativa quando a lista foi lida
+        legend: {}            // { índice da cor: significado }
     };
 
     // ---------- coisas guardadas no painel (localStorage do UXP) ----------
@@ -299,6 +302,14 @@
 
         renderSelectionInfo();
         if (fieldText("impText")) scheduleImportPreview();
+        renderChecklist();
+        // trocou de sequência: a lista de destinos (que exclui a ativa) precisa ser relida
+        if (state.sequencesFor && hasSeq() && state.sequencesFor !== state.ctx.sequenceId) {
+            state.sequences = null;
+            state.sequencesFor = "";
+            renderSequenceList();
+            if (!isCollapsed("seqclip")) loadSequences();
+        }
         state.lastRenderMs = Date.now() - t0;
         renderDiagnostics();
     }
@@ -334,7 +345,7 @@
             b.setAttribute("role", "button");
             b.className = "chip color-chip" + (state.filters.colors.indexOf(c.index) >= 0 ? " on" : "");
             b.setAttribute("data-color", String(c.index));
-            b.setAttribute("title", tr(c.label));
+            b.setAttribute("title", tr(c.label) + (state.legend[c.index] ? " — " + state.legend[c.index] : ""));
             var dot = document.createElement("span");
             dot.className = "dot";
             dot.style.backgroundColor = c.hex;
@@ -551,6 +562,10 @@
         setEnabled("btnImpOpen", !state.busy);
         setEnabled("btnImport", ready && !!fieldText("impText").trim());
         setEnabled("btnCutMarkers", ready);
+        setEnabled("btnSeqRefresh", ready);
+        setEnabled("btnCopy", canExport && $("copyTarget").value && $("copyTarget").value !== "none");
+        ["btnClipToSeq", "btnSeqToClip", "btnSelPending", "btnSelDone"].forEach(function (id) { setEnabled(id, ready); });
+        ["btnDone", "btnUndone"].forEach(function (id) { setEnabled(id, ready && n); });
         setClass($("chipImpSkip"), "chip" + (state.impSkip ? " on" : ""));
         setEnabled("btnTest", ready);
         ["btnReplace", "btnNumber"].forEach(function (id) { setEnabled(id, ready && n); });
@@ -1251,9 +1266,9 @@
             await read(N("antes de uma operação do painel"), true);
             state.records.forEach(function (r) { before[r.key] = true; });
             built = await buildItems();
-            if (!built.items.length) { setStatus(tr(built.emptyMessage), "warn"); return; }
+            if (!built.items.length) { setStatus(tr(built.emptyMessage) + (built.note ? " " + built.note : ""), "warn"); return; }
             P.addMarkers(state.ctx, built.items, undoLabel);
-            message = tr(doneKey, built.items.length);
+            message = tr(doneKey, built.items.length) + (built.note ? " " + built.note : "");
         } catch (e) {
             showError(e);
             return;
@@ -1262,40 +1277,30 @@
             updateButtons();
         }
         await read(N("depois de uma operação do painel"), true, message).catch(showError);
-        if (after) await after(built.items, before);
+        if (after) await after(built.items, before, built.note || "");
     }
 
     function onImport() {
         runAdd(function () {
             var r = importResult();
             return { items: r.items, emptyMessage: N("Nada para importar: nenhum marcador novo reconhecido.") };
-        }, tr("Helmet Marker: importar marcadores"), N("Marcadores importados: {0}. Um Ctrl+Z desfaz."), applyImportColors);
+        }, tr("Helmet Marker: importar marcadores"), N("Marcadores importados: {0}. Um Ctrl+Z desfaz."), function (items, before) {
+            return applyNewColors(items, before, tr("Helmet Marker: cores dos importados"),
+                tr("Marcadores importados: {0}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.", items.length));
+        });
     }
 
     // A cor não entra na criação (a API não devolve o marcador criado): os novos são achados
     // pelo frame e pelo nome depois de reler, e recebem a cor numa segunda transação.
-    async function applyImportColors(items, before) {
-        var wanted = items.filter(function (it) { return it.colorIndex !== null; });
-        if (!wanted.length) return;
-        var pool = {};
-        state.records.forEach(function (r) {
-            if (before[r.key]) return;
-            var k = r.startFrame + "|" + r.name;
-            (pool[k] = pool[k] || []).push(r);
-        });
-        var plan = [];
-        wanted.forEach(function (it) {
-            var list = pool[it.frame + "|" + it.name];
-            var r = list && list.shift();
-            if (r && r.colorIndex !== it.colorIndex) plan.push({ record: r, color: it.colorIndex });
-        });
+    async function applyNewColors(items, before, undoLabel, doneMessage) {
+        var plan = PL.planColorsForNew(items, state.records, before);
         if (!plan.length) return;
         state.busy = true;
         updateButtons();
         var message;
         try {
-            P.applyPlan(state.ctx, plan, tr("Helmet Marker: cores dos importados"));
-            message = tr("Marcadores importados: {0}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.", items.length);
+            P.applyPlan(state.ctx, plan, undoLabel);
+            message = doneMessage;
         } catch (e) {
             showError(e);
             return;
@@ -1304,6 +1309,244 @@
             updateButtons();
         }
         await read(N("depois de uma operação do painel"), true, message).catch(showError);
+    }
+
+    // ---------- fase 3 (parte B): outra sequência ----------
+    async function loadSequences() {
+        if (!hasSeq()) return;
+        try {
+            state.sequences = await P.listSequences(state.ctx);
+            state.sequencesFor = state.ctx.sequenceId;
+        } catch (e) {
+            state.sequences = [];
+            showError(e);
+        }
+        renderSequenceList();
+    }
+
+    function renderSequenceList() {
+        var sel = $("copyTarget"), keep = sel.value;
+        clear(sel);
+        var list = state.sequences || [];
+        if (!list.length) {
+            var e = document.createElement("option");
+            e.value = "none";
+            e.textContent = state.sequences ? tr("Nenhuma outra sequência no projeto") : tr("Clique em Atualizar lista");
+            sel.appendChild(e);
+            sel.value = "none";
+        } else {
+            list.forEach(function (sq) {
+                var o = document.createElement("option");
+                o.value = sq.id;
+                o.textContent = sq.name;
+                sel.appendChild(o);
+            });
+            if (keep && list.some(function (sq) { return sq.id === keep; })) sel.value = keep;
+        }
+        updateButtons();
+    }
+
+    async function onCopy() {
+        if (state.busy) return;
+        var id = $("copyTarget").value;
+        if (!id || id === "none") { showError(new Error("Escolha a sequência de destino.")); return; }
+        state.busy = true;
+        updateButtons();
+        var message;
+        try {
+            await read(N("antes de uma operação do painel"), true);
+            var src = exportTargets();
+            if (!src.length) throw new Error("Nenhum marcador para copiar.");
+            var tctx = await P.getSequenceContext(state.ctx, id);
+            var trecs = await P.readMarkers(tctx);
+            var before = {};
+            trecs.forEach(function (r) { before[r.key] = true; });
+            var k = IM.skipExisting(PL.planCopy(src, state.ctx.ticksPerFrame, tctx.ticksPerFrame), trecs);
+            if (!k.items.length) { setStatus(tr("Todos já existem na sequência de destino."), "warn"); return; }
+            P.addMarkers(tctx, k.items, tr("Helmet Marker: copiar marcadores"));
+            var colors = PL.planColorsForNew(k.items, await P.readMarkers(tctx), before);
+            if (colors.length) P.applyPlan(tctx, colors, tr("Helmet Marker: cores dos copiados"));
+            message = colors.length
+                ? tr("Copiados para {0}: {1}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.", tctx.sequenceName, k.items.length)
+                : tr("Copiados para {0}: {1}. Um Ctrl+Z desfaz.", tctx.sequenceName, k.items.length);
+            if (k.skipped) message += " " + tr("{0} já existe(m) e fica(m) de fora.", k.skipped);
+        } catch (e) {
+            showError(e);
+            return;
+        } finally {
+            state.busy = false;
+            updateButtons();
+        }
+        setStatus(message, "ok");
+    }
+
+    // ---------- fase 3 (parte B): clipe e sequência ----------
+    async function selectedClips() {
+        var clips = await P.getSelectedClips(state.ctx);
+        if (!clips.length) throw new Error("Selecione um ou mais clipes na timeline.");
+        var usable = clips.filter(PL.clipUsable);
+        return { usable: usable, speedSkipped: clips.length - usable.length };
+    }
+
+    function clipNote(speedSkipped, outside) {
+        var parts = [];
+        if (speedSkipped) parts.push(tr("Clipes com velocidade alterada ficaram de fora: {0}.", speedSkipped));
+        if (outside) parts.push(tr("Marcadores na parte cortada do clipe (ignorados): {0}.", outside));
+        return parts.join(" ");
+    }
+
+    function onClipToSeq() {
+        runAdd(async function () {
+            var c = await selectedClips();
+            var items = [], outside = 0;
+            for (var i = 0; i < c.usable.length; i++) {
+                var cm = await P.readClipMarkers(c.usable[i]);
+                var r = PL.clipToSequence(cm.list, c.usable[i], state.ctx.ticksPerFrame);
+                items = items.concat(r.items);
+                outside += r.outside;
+            }
+            var k = IM.skipExisting(items, state.records);
+            var note = clipNote(c.speedSkipped, outside);
+            if (k.skipped) note = (note ? note + " " : "") + tr("{0} já existe(m) e fica(m) de fora.", k.skipped);
+            return { items: k.items, note: note, emptyMessage: N("Nenhum marcador novo para trazer do clipe.") };
+        }, tr("Helmet Marker: trazer marcadores do clipe"), N("Marcadores trazidos do clipe: {0}. Um Ctrl+Z desfaz."), function (items, before, note) {
+            return applyNewColors(items, before, tr("Helmet Marker: cores dos trazidos"),
+                tr("Marcadores trazidos do clipe: {0}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.", items.length) + (note ? " " + note : ""));
+        });
+    }
+
+    async function onSeqToClip() {
+        if (state.busy) return;
+        state.busy = true;
+        updateButtons();
+        var message, kind = "ok";
+        try {
+            await read(N("antes de uma operação do painel"), true);
+            var c = await selectedClips();
+            var src = exportTargets();
+            var tpf = state.ctx.ticksPerFrame;
+            var groups = [], skipped = 0, total = 0;
+            for (var i = 0; i < c.usable.length; i++) {
+                var cm = await P.readClipMarkers(c.usable[i]);
+                var k = PL.skipExistingTicks(PL.sequenceToClip(src, c.usable[i], tpf), cm.list, tpf);
+                skipped += k.skipped;
+                if (!k.items.length) continue;
+                var before = {};
+                cm.list.forEach(function (m) { before[m.key] = true; });
+                groups.push({ clip: c.usable[i], markersObj: cm.markersObj, items: k.items, before: before });
+                total += k.items.length;
+            }
+            var note = clipNote(c.speedSkipped, 0);
+            if (skipped) note = (note ? note + " " : "") + tr("{0} já existe(m) e fica(m) de fora.", skipped);
+            if (!total) {
+                setStatus(tr("Nenhum marcador da sequência está em cima dos clipes selecionados.") + (note ? " " + note : ""), "warn");
+                return;
+            }
+            P.addClipMarkers(state.ctx, groups, tr("Helmet Marker: enviar marcadores para o clipe"));
+            // cor: segunda transação, achando os novos pelo tempo + nome
+            var colorPlan = [];
+            for (var g = 0; g < groups.length; g++) {
+                var again = await P.readClipMarkers(groups[g].clip);
+                colorPlan = colorPlan.concat(PL.planColorsForNew(groups[g].items, again.list, groups[g].before,
+                    function (m) { return m.startTicks + "|" + String(m.name || ""); }));
+            }
+            if (colorPlan.length) P.applyPlan(state.ctx, colorPlan, tr("Helmet Marker: cores dos enviados"));
+            message = (colorPlan.length
+                ? tr("Marcadores enviados para {0} clipe(s): {1}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.", groups.length, total)
+                : tr("Marcadores enviados para {0} clipe(s): {1}. Um Ctrl+Z desfaz.", groups.length, total)) + (note ? " " + note : "");
+        } catch (e) {
+            showError(e);
+            return;
+        } finally {
+            state.busy = false;
+            updateButtons();
+        }
+        setStatus(message, kind);
+    }
+
+    // ---------- fase 3 (parte B): checklist e legenda ----------
+    var LEGEND_KEY = "helmetmarker.legend";
+
+    function loadLegend() {
+        try { state.legend = JSON.parse(window.localStorage.getItem(LEGEND_KEY) || "{}") || {}; } catch (e) { state.legend = {}; }
+    }
+    function saveLegend() {
+        try { window.localStorage.setItem(LEGEND_KEY, JSON.stringify(state.legend)); } catch (e) { /* só nesta sessão */ }
+    }
+
+    var legendSig = "";
+    function renderLegendRows() {
+        if (isCollapsed("checklist")) return;
+        var colors = state.ctx && state.ctx.colors ? state.ctx.colors : [];
+        var sig = colors.map(function (c) { return c.index; }).join(",") + "|" + HMI18n.lang();
+        if (sig === legendSig) return;
+        legendSig = sig;
+        var box = $("legendRows");
+        clear(box);
+        colors.forEach(function (c) {
+            var row = document.createElement("div");
+            row.className = "legend-row";
+            var dot = document.createElement("span");
+            dot.className = "dot";
+            dot.style.backgroundColor = c.hex;
+            var label = document.createElement("span");
+            label.className = "field-label";
+            label.textContent = tr(c.label);
+            var input = document.createElement("input");
+            input.className = "input grow";
+            input.setAttribute("type", "text");
+            input.setAttribute("placeholder", tr("Significado"));
+            input.value = state.legend[c.index] || "";
+            input.addEventListener("change", function () {
+                var v = (input.value === null || input.value === undefined ? "" : String(input.value)).trim();
+                if (v) state.legend[c.index] = v; else delete state.legend[c.index];
+                saveLegend();
+                state.colorsSig = "";       // refaz os títulos das cores do filtro
+                buildColorControls();
+                renderChecklist();
+            });
+            row.appendChild(dot);
+            row.appendChild(label);
+            row.appendChild(input);
+            box.appendChild(row);
+        });
+    }
+
+    function renderChecklist() {
+        if (isCollapsed("checklist")) return;
+        renderLegendRows();
+        var box = $("checkProgress");
+        var lines = [];
+        if (hasSeq() && state.records.length) {
+            var p = PL.progress(state.records);
+            lines.push(tr("Feitos: {0} de {1}", p.done, p.total));
+            p.byColor.forEach(function (b) {
+                var c = M.colorFor(state.ctx.colors, b.index);
+                var meaning = state.legend[b.index] ? " (" + state.legend[b.index] + ")" : "";
+                lines.push("● " + tr(c.label) + meaning + ": " + b.done + "/" + b.total);
+            });
+        }
+        while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
+        lines.forEach(function (l, i) {
+            var d = box.childNodes[i];
+            if (!d) { d = document.createElement("div"); box.appendChild(d); }
+            setText(d, l);
+        });
+    }
+
+    function onDone(done) {
+        runEdit(function () { return PL.planDone(needSelection(), done); },
+            done ? tr("Helmet Marker: marcar como feito") : tr("Helmet Marker: desmarcar feito"),
+            done ? N("Marcados como feitos: {0}. Um Ctrl+Z desfaz.") : N("Desmarcados: {0}. Um Ctrl+Z desfaz."));
+    }
+
+    function selectByDone(done) {
+        var sel = {};
+        state.visible.forEach(function (r) { if (PL.isDone(r) === done) sel[r.key] = true; });
+        state.selected = sel;
+        renderSelectionInfo();
+        var n = Object.keys(sel).length;
+        setStatus(done ? tr("Feitos selecionados: {0}.", n) : tr("Pendentes selecionados: {0}.", n), n ? "ok" : "warn");
     }
 
     function onCutMarkers() {
@@ -1365,6 +1608,8 @@
         paintCard(key);
         if (key === "tools") renderDiagnostics();
         if (key === "import") renderImportPreview();
+        if (key === "checklist") { legendSig = ""; renderChecklist(); }
+        if (key === "seqclip" && !isCollapsed("seqclip") && hasSeq() && state.sequencesFor !== state.ctx.sequenceId) loadSequences();
     }
 
     // ---------- medidor de travadas ----------
@@ -1593,6 +1838,19 @@
         on("btnImport", "click", onImport);
         show($("impPreview"), false);
         on("btnCutMarkers", "click", onCutMarkers);
+
+        // fase 3 (parte B)
+        loadLegend();
+        renderSequenceList();
+        on("btnSeqRefresh", "click", loadSequences);
+        on("copyTarget", "change", updateButtons);
+        on("btnCopy", "click", onCopy);
+        on("btnClipToSeq", "click", onClipToSeq);
+        on("btnSeqToClip", "click", onSeqToClip);
+        on("btnDone", "click", function () { onDone(true); });
+        on("btnUndone", "click", function () { onDone(false); });
+        on("btnSelPending", "click", function () { selectByDone(false); });
+        on("btnSelDone", "click", function () { selectByDone(true); });
 
         on("btnTest", "click", onTest);
 

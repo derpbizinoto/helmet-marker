@@ -701,6 +701,53 @@ test("marcador em cada corte: pula o fim e os que já têm marcador", () => {
     assert.throws(() => PL.planCutMarkers([], []), /clipes/);
 });
 
+// ---------------------------------------------------------------------------
+// Fase 3 parte B: outra sequência, clipe <-> sequência, checklist
+// ---------------------------------------------------------------------------
+test("cores dos novos: casa frame+nome, uma vez cada, ignora os antigos", () => {
+    const recs = [rec("old", 10, { name: "A", colorIndex: 0 }), rec("n1", 10, { name: "A", colorIndex: 0 }), rec("n2", 20, { name: "B", colorIndex: 1 })];
+    const plan = PL.planColorsForNew([{ frame: 10, name: "A", colorIndex: 6 }, { frame: 20, name: "B", colorIndex: 1 }, { frame: 30, name: "C", colorIndex: 2 }], recs, { old: true });
+    assert.deepStrictEqual(plan.map((p) => [p.record.key, p.color]), [["n1", 6]]);
+});
+test("copiar para sequência com outra taxa: mesmo tempo, frame mais próximo", () => {
+    const tpf25 = 10160640000, tpf2997 = 8475667200;
+    const items = PL.planCopy([rec("b", 50, { startTicks: 50 * tpf25, durationFrames: 25, name: "B", colorIndex: 3 }), rec("a", 0, { startTicks: 0, name: "A" })], tpf25, tpf2997);
+    assert.deepStrictEqual(items.map((i) => [i.frame, i.durationFrames, i.name, i.colorIndex]), [[0, 0, "A", 0], [60, 30, "B", 3]]);
+    assert.throws(() => PL.planCopy([], 1, 0), /Ticks/);
+});
+test("clipe -> sequência: posição pelo início e ponto de entrada; corta o que está fora", () => {
+    const TPF = 1000;
+    const clip = { startTicks: 100 * TPF, endTicks: 200 * TPF, inTicks: 50 * TPF, outTicks: 150 * TPF, speed: 1, reversed: false };
+    const r = PL.clipToSequence([
+        { startTicks: 10 * TPF, name: "antes" },
+        { startTicks: 60 * TPF, durationTicks: 200 * TPF, name: "dentro", colorIndex: 2 },
+        { startTicks: 150 * TPF, name: "depois" }
+    ], clip, TPF);
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.durationFrames, i.name]), [[110, 90, "dentro"]]);
+    assert.strictEqual(r.outside, 2);
+    assert.ok(PL.clipUsable(clip));
+    assert.ok(!PL.clipUsable({ speed: 2 }));
+    assert.ok(!PL.clipUsable({ speed: 1, reversed: true }));
+});
+test("sequência -> clipe: só os que caem no clipe, no tempo da mídia; pula repetidos", () => {
+    const TPF = 1000;
+    const clip = { startTicks: 100 * TPF, endTicks: 200 * TPF, inTicks: 50 * TPF, outTicks: 150 * TPF };
+    const recs = [rec("a", 90, { startTicks: 90 * TPF, name: "fora" }), rec("b", 120, { startTicks: 120 * TPF, name: "B", durationFrames: 500 }), rec("c", 199, { startTicks: 199 * TPF, name: "C" })];
+    const items = PL.sequenceToClip(recs, clip, TPF);
+    assert.deepStrictEqual(items.map((i) => [i.ticks / TPF, i.durationTicks / TPF, i.name]), [[70, 80, "B"], [149, 0, "C"]]);
+    const k = PL.skipExistingTicks(items, [{ startTicks: 70 * TPF + 100, name: "B" }], TPF);
+    assert.deepStrictEqual([k.items.map((i) => i.name), k.skipped], [["C"], 1]);
+});
+test("checklist: marcar e desmarcar feito, progresso por cor", () => {
+    const recs = [rec("a", 0, { name: "Intro", colorIndex: 1 }), rec("b", 10, { name: "✓ Fala", colorIndex: 1 }), rec("c", 20, { name: "", colorIndex: 6 })];
+    assert.deepStrictEqual(PL.planDone(recs, true).map((p) => p.name), ["✓ Intro", "✓ "]);
+    assert.deepStrictEqual(PL.planDone(recs, false).map((p) => p.name), ["Fala"]);
+    const p = PL.progress(recs);
+    assert.deepStrictEqual([p.done, p.total], [1, 3]);
+    assert.deepStrictEqual(p.byColor, [{ index: 1, done: 1, total: 2 }, { index: 6, done: 0, total: 1 }]);
+    assert.ok(PL.isDone({ name: "  ✓pronto" }));
+});
+
 const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js", "core/library.js", "core/importers.js"];
 
 function literalCalls(src, fnNames) {

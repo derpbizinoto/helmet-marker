@@ -24,6 +24,10 @@
 //   sequence.getVideoTrackCount / getVideoTrack / getAudioTrackCount / getAudioTrack (25.6, Promise)
 //   VideoTrack/AudioTrack.getTrackItems(Constants.TrackItemType, includeEmpty) (25.6, sem Promise)
 //   VideoClipTrackItem/AudioClipTrackItem.getStartTime / getEndTime (25.6, Promise<TickTime>)
+//   fase 3 (parte B): project.getSequences (25.6, Promise<Sequence[]>), sequence.getSelection
+//   (25.6) + TrackItemSelection.getTrackItems (25.6, Promise), ClipTrackItem.getInPoint /
+//   getOutPoint / getSpeed / isSpeedReversed / getName / getProjectItem (25.6, Promise),
+//   ClipProjectItem.cast (25.6, síncrono), Markers.getMarkers(Sequence | ClipProjectItem) (25.6)
 // Fora do Premiere (API UXP, conferida em developer.adobe.com/premiere-pro/uxp/uxp-api/):
 //   require("uxp").storage.localFileSystem.getFileForSaving(nome, { types }) -> File ou null;
 //   getFileForOpening({ types, allowMultiple }) -> File ou null; File.read({ format }) com
@@ -73,6 +77,11 @@ var HMPremiere = (function () {
             return light;
         }
 
+        return buildContext(project, sequence);
+    }
+
+    async function buildContext(project, sequence) {
+        var a = ppro();
         var settings = await sequence.getSettings();
         var frameRate = await val(settings.getVideoFrameRate());
         if (!frameRate) throw new Error("O Premiere não informou a taxa de quadros da sequência.");
@@ -120,6 +129,110 @@ var HMPremiere = (function () {
             }
         } catch (e) { /* cai na suposição abaixo */ }
         return { dropFrame: true, source: "guess", raw: raw };
+    }
+
+    // ---------- outras sequências do projeto (fase 3) ----------
+    var seqCache = {};
+
+    // Todas as sequências do projeto menos a ativa: [{ id, name }] em ordem alfabética.
+    async function listSequences(ctx) {
+        var list = (await ctx.project.getSequences()) || [];
+        seqCache = {};
+        var out = [];
+        list.forEach(function (sq) {
+            var id = guidText(sq.guid);
+            if (!id || id === ctx.sequenceId) return;
+            seqCache[id] = sq;
+            out.push({ id: id, name: String(sq.name || "") });
+        });
+        out.sort(function (x, y) { return x.name.localeCompare(y.name); });
+        return out;
+    }
+
+    // Contexto (taxa, início, marcadores) de outra sequência, sem torná-la ativa.
+    async function getSequenceContext(ctx, id) {
+        var sq = seqCache[id];
+        if (!sq) throw new Error("A sequência de destino não existe mais. Atualize a lista de sequências.");
+        return buildContext(ctx.project, sq);
+    }
+
+    // ---------- clipes selecionados na timeline (fase 3) ----------
+    async function getSelectedClips(ctx) {
+        var a = ppro();
+        var sel = await ctx.sequence.getSelection();
+        var items = sel ? ((await sel.getTrackItems()) || []) : [];
+        var clips = [], seen = {};
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var pi = await it.getProjectItem();
+            if (!pi) continue;
+            var clipItem = null;
+            try { clipItem = a.ClipProjectItem.cast(pi); } catch (e) { clipItem = null; }
+            if (!clipItem) continue;
+            var st = await it.getStartTime(), en = await it.getEndTime();
+            var ip = await it.getInPoint(), op = await it.getOutPoint();
+            var speed = null, reversed = false;
+            try { speed = await it.getSpeed(); } catch (e) { speed = null; }
+            try { reversed = !!(await it.isSpeedReversed()); } catch (e) { reversed = false; }
+            var clipName = String((await val(it.getName())) || clipItem.name || "");
+            // vídeo e áudio ligados são dois itens do mesmo clipe: conta uma vez
+            var same = clipName + "|" + st.ticksNumber + "|" + ip.ticksNumber;
+            if (seen[same]) continue;
+            seen[same] = true;
+            clips.push({
+                name: clipName,
+                projectItem: clipItem,
+                startTicks: st.ticksNumber, endTicks: en.ticksNumber,
+                inTicks: ip.ticksNumber, outTicks: op.ticksNumber,
+                speed: speed, reversed: reversed
+            });
+        }
+        clips.sort(function (x, y) { return x.startTicks - y.startTicks; });
+        return clips;
+    }
+
+    // Marcadores do clipe no projeto (tempo da mídia, em ticks).
+    async function readClipMarkers(clip) {
+        var markersObj = await ppro().Markers.getMarkers(clip.projectItem);
+        var list = (await val(markersObj.getMarkers())) || [];
+        var out = [];
+        for (var i = 0; i < list.length; i++) {
+            var m = list[i];
+            var start = await val(m.getStart());
+            var dur = await val(m.getDuration());
+            out.push({
+                marker: m,
+                key: guidText(m.guid) || "i" + i,
+                name: String((await val(m.getName())) || ""),
+                comments: String((await val(m.getComments())) || ""),
+                type: String((await val(m.getType())) || ""),
+                colorIndex: await val(m.getColorIndex()),
+                startTicks: start.ticksNumber,
+                durationTicks: dur ? dur.ticksNumber : 0
+            });
+        }
+        return { markersObj: markersObj, list: out };
+    }
+
+    // Cria marcadores em clipes (tempo em ticks da mídia). groups: [{ markersObj, items }].
+    // Todos os clipes numa transação só (um Ctrl+Z).
+    function addClipMarkers(ctx, groups, undoLabel) {
+        var a = ppro();
+        var made = [];
+        groups.forEach(function (g) {
+            g.items.forEach(function (it) {
+                made.push({
+                    obj: g.markersObj,
+                    name: String(it.name || ""), type: typeValue(it.type || "Comment"), comments: String(it.comments || ""),
+                    time: a.TickTime.createWithTicks(String(Math.round(it.ticks))),
+                    duration: a.TickTime.createWithTicks(String(Math.max(0, Math.round(it.durationTicks || 0))))
+                });
+            });
+        });
+        if (!made.length) return false;
+        return runTransaction(ctx, undoLabel, function (add) {
+            made.forEach(function (m) { add(m.obj.createAddMarkerAction(m.name, m.type, m.time, m.duration, m.comments)); });
+        });
     }
 
     // ---------- leitura ----------
@@ -371,6 +484,11 @@ var HMPremiere = (function () {
         setPlayheadFrame: setPlayheadFrame,
         getInOut: getInOut,
         getCutFrames: getCutFrames,
+        listSequences: listSequences,
+        getSequenceContext: getSequenceContext,
+        getSelectedClips: getSelectedClips,
+        readClipMarkers: readClipMarkers,
+        addClipMarkers: addClipMarkers,
         saveTextFile: saveTextFile,
         openTextFile: openTextFile,
         copyText: copyText,

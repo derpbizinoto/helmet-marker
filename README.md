@@ -25,6 +25,8 @@ Free and open source ([MIT license](LICENSE)).
 - Timing: same duration for many markers, distribute evenly, snap to the nearest clip cut, remove duplicates and merge nearby markers.
 - Import from a pasted list, CSV (including Premiere's own), SRT, EDL or JSON, with a preview; create a marker on every cut.
 - Export a review list, plain text and JSON too.
+- Copy markers to another sequence; bring clip markers into the sequence and send sequence markers to the clip.
+- Checklist (mark as done, progress per color) and a color legend.
 - Keeps the list up to date: when the sequence changes and with a light check every few seconds (Premiere does not notify when a marker is added in the timeline).
 
 ## Requirements
