@@ -600,7 +600,7 @@
         setEnabled("btnSavedLoad", ready && saved);
         setEnabled("btnSavedDelete", !!saved);
         setEnabled("btnSavedSave", ready && n);
-        setClass($("chipMatchCase"), "chip" + (state.matchCase ? " on" : ""));
+        setClass($("chipMatchCase"), "chip field-b" + (state.matchCase ? " on" : ""));
         setClass($("chipInOut"), "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled"));
         setClass($("chipAfterPlayhead"), "chip" + (state.afterPlayheadOn ? " on" : ""));
     }
@@ -1431,7 +1431,7 @@
             label.className = "field-label";
             label.textContent = tr(c.label);
             var input = document.createElement("input");
-            input.className = "input grow";
+            input.className = "input field";
             input.setAttribute("type", "text");
             input.setAttribute("placeholder", tr("Significado"));
             input.value = state.legend[c.index] || "";

@@ -37,14 +37,14 @@
                 <input id="filterText" class="input full" type="text" placeholder="Buscar" />
             </div>
             <div class="row-tools">
-                <select id="filterType" class="input">
+                <select id="filterType" class="input mid">
                     <option value="any">Todos os tipos</option>
                     <option value="Comment">Comentário</option>
                     <option value="Chapter">Capítulo</option>
                     <option value="Segmentation">Segmentação</option>
                     <option value="WebLink">Link da Web</option>
                 </select>
-                <select id="filterDuration" class="input">
+                <select id="filterDuration" class="input mid">
                     <option value="all">Qualquer duração</option>
                     <option value="point">Pontuais</option>
                     <option value="ranged">Com duração</option>
@@ -58,13 +58,13 @@
 
             <div class="group-label">Seleção</div>
             <div class="row-tools">
-                <div role="button" id="btnSelAll" class="btn btn-secondary btn-sm">Tudo</div>
-                <div role="button" id="btnSelNone" class="btn btn-secondary btn-sm">Nenhum</div>
-                <div role="button" id="btnSelInvert" class="btn btn-secondary btn-sm">Inverter</div>
+                <div role="button" id="btnSelAll" class="btn btn-secondary btn-sm w">Tudo</div>
+                <div role="button" id="btnSelNone" class="btn btn-secondary btn-sm w">Nenhum</div>
+                <div role="button" id="btnSelInvert" class="btn btn-secondary btn-sm w">Inverter</div>
             </div>
             <div class="row-tools">
-                <div role="button" id="btnSelBefore" class="btn btn-secondary btn-sm">Antes</div>
-                <div role="button" id="btnSelAfter" class="btn btn-secondary btn-sm">Depois</div>
+                <div role="button" id="btnSelBefore" class="btn btn-secondary btn-sm w">Antes</div>
+                <div role="button" id="btnSelAfter" class="btn btn-secondary btn-sm w">Depois</div>
                 <select id="relRef" class="input">
                     <option value="marker">do marcador clicado</option>
                     <option value="playhead">do playhead</option>
@@ -103,20 +103,20 @@
 
             <div class="edit-row">
                 <span class="edit-label">Cor</span>
-                <select id="editColor" class="input"></select>
+                <select id="editColor" class="input field"></select>
                 <div role="button" id="btnColor" class="btn btn-primary btn-sm">Aplicar</div>
                 <span class="preview" id="pvColor"></span>
             </div>
             <div class="edit-row">
                 <span class="edit-label">Nome</span>
-                <input id="editName" class="input grow" type="text" placeholder="Novo nome" />
+                <input id="editName" class="input field" type="text" placeholder="Novo nome" />
                 <div role="button" id="btnName" class="btn btn-primary btn-sm">Aplicar</div>
                 <span class="preview" id="pvName"></span>
             </div>
             <div class="edit-row">
                 <span class="edit-label">Comentário</span>
-                <input id="editComment" class="input grow" type="text" placeholder="Texto" />
-                <select id="editCommentMode" class="input">
+                <input id="editComment" class="input field-a" type="text" placeholder="Texto" />
+                <select id="editCommentMode" class="input field-b">
                     <option value="replace">Substituir</option>
                     <option value="append">No fim</option>
                     <option value="prepend">No começo</option>
@@ -126,7 +126,7 @@
             </div>
             <div class="edit-row">
                 <span class="edit-label">Tipo</span>
-                <select id="editType" class="input">
+                <select id="editType" class="input field">
                     <option value="Comment">Comentário</option>
                     <option value="Chapter">Capítulo</option>
                     <option value="Segmentation">Segmentação</option>
@@ -178,34 +178,44 @@
 
             <div class="group-label">Localizar e substituir</div>
             <div class="edit-row">
-                <input id="findText" class="input grow" type="text" placeholder="Procurar" />
-                <input id="replaceText" class="input grow" type="text" placeholder="Trocar por" />
+                <span class="edit-label">Procurar</span>
+                <input id="findText" class="input field" type="text" />
             </div>
             <div class="edit-row">
-                <select id="findFields" class="input">
+                <span class="edit-label">Trocar por</span>
+                <input id="replaceText" class="input field" type="text" />
+            </div>
+            <div class="edit-row">
+                <span class="edit-label"></span>
+                <select id="findFields" class="input field-a">
                     <option value="both">Nome e comentário</option>
                     <option value="name">Só nome</option>
                     <option value="comments">Só comentário</option>
                 </select>
-                <div role="button" id="chipMatchCase" class="chip">Maiúsculas</div>
+                <div role="button" id="chipMatchCase" class="chip field-b">Maiúsculas</div>
                 <div role="button" id="btnReplace" class="btn btn-primary btn-sm">Substituir</div>
                 <span class="preview" id="pvReplace"></span>
             </div>
 
             <div class="group-label">Numeração</div>
             <div class="edit-row">
-                <span class="field-label">Prefixo</span>
-                <input id="numPrefix" class="input" type="text" placeholder="Ex.: Cena" />
-                <span class="field-label">Início</span>
+                <span class="edit-label">Prefixo</span>
+                <input id="numPrefix" class="input field" type="text" placeholder="Ex.: Cena" />
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Sufixo</span>
+                <input id="numSuffix" class="input field" type="text" />
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Início</span>
                 <input id="numStart" class="input num" type="number" value="1" />
                 <span class="field-label">Passo</span>
                 <input id="numStep" class="input num" type="number" value="1" />
                 <span class="field-label">Dígitos</span>
                 <input id="numDigits" class="input num" type="number" value="2" />
-                <span class="field-label">Sufixo</span>
-                <input id="numSuffix" class="input" type="text" />
             </div>
             <div class="edit-row">
+                <span class="edit-label"></span>
                 <div role="button" id="btnNumber" class="btn btn-primary btn-sm">Numerar</div>
                 <span class="preview" id="pvNumber"></span>
             </div>
@@ -215,30 +225,34 @@
         <section class="card" data-card="templates">
             <div class="card-title">Modelos de marcador</div>
             <div class="edit-row">
-                <select id="tplSelect" class="input grow"></select>
+                <span class="edit-label"></span>
+                <select id="tplSelect" class="input field"></select>
                 <div role="button" id="btnTplApply" class="btn btn-primary btn-sm">Aplicar</div>
-                <div role="button" id="btnTplCreate" class="btn btn-secondary btn-sm">Criar no playhead</div>
-                <div role="button" id="btnTplDelete" class="btn btn-ghost btn-sm">Apagar</div>
+                <span class="preview" id="pvTpl"></span>
             </div>
             <div class="edit-row">
-                <span class="preview" id="pvTpl"></span>
+                <span class="edit-label"></span>
+                <div role="button" id="btnTplCreate" class="btn btn-secondary btn-sm">Criar no playhead</div>
+                <div role="button" id="btnTplDelete" class="btn btn-ghost btn-sm">Apagar</div>
             </div>
 
             <div class="group-label">Editar modelo</div>
             <div class="hint top">Escolher um modelo preenche os campos. Campo vazio não muda.</div>
             <div class="edit-row">
                 <span class="edit-label">Modelo</span>
-                <input id="tplName" class="input grow" type="text" placeholder="Nome do modelo" />
+                <input id="tplName" class="input field" type="text" placeholder="Nome do modelo" />
             </div>
             <div class="edit-row">
                 <span class="edit-label">Nome</span>
-                <input id="tplMarkerName" class="input grow" type="text" placeholder="Nome do marcador" />
+                <input id="tplMarkerName" class="input field" type="text" placeholder="Nome do marcador" />
             </div>
             <div class="edit-row">
                 <span class="edit-label">Cor</span>
-                <select id="tplColor" class="input"></select>
-                <span class="field-label">Tipo</span>
-                <select id="tplType" class="input">
+                <select id="tplColor" class="input field"></select>
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Tipo</span>
+                <select id="tplType" class="input field">
                     <option value="keep">Não mudar</option>
                     <option value="Comment">Comentário</option>
                     <option value="Chapter">Capítulo</option>
@@ -248,14 +262,15 @@
             </div>
             <div class="edit-row">
                 <span class="edit-label">Comentário</span>
-                <input id="tplComment" class="input grow" type="text" placeholder="Texto" />
-                <select id="tplCommentMode" class="input">
+                <input id="tplComment" class="input field-a" type="text" placeholder="Texto" />
+                <select id="tplCommentMode" class="input field-b">
                     <option value="replace">Substituir</option>
                     <option value="append">No fim</option>
                     <option value="prepend">No começo</option>
                 </select>
             </div>
             <div class="edit-row">
+                <span class="edit-label"></span>
                 <div role="button" id="btnTplSave" class="btn btn-secondary btn-sm">Salvar modelo</div>
             </div>
             <div class="hint">Modelo com cor: desfazer leva dois Ctrl+Z.</div>
@@ -299,8 +314,8 @@
             </div>
             <textarea id="impText" class="input textarea" placeholder="Um por linha. Ex.: 1:05 Entrevista"></textarea>
             <div class="edit-row">
-                <span class="field-label">Formato</span>
-                <select id="impFormat" class="input">
+                <span class="edit-label">Formato</span>
+                <select id="impFormat" class="input field">
                     <option value="auto">Automático</option>
                     <option value="list">Lista de tempos</option>
                     <option value="csv">CSV / planilha</option>
@@ -308,14 +323,17 @@
                     <option value="edl">EDL</option>
                     <option value="json">JSON do Helmet Marker</option>
                 </select>
-                <span class="field-label">Tempos</span>
-                <select id="impBase" class="input">
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Tempos</span>
+                <select id="impBase" class="input field">
                     <option value="auto">Automático</option>
                     <option value="timeline">Timecode da timeline</option>
                     <option value="start">Contados do início (00:00)</option>
                 </select>
             </div>
             <div class="edit-row">
+                <span class="edit-label"></span>
                 <div role="button" id="chipImpSkip" class="chip on">Pular existentes</div>
                 <div role="button" id="btnImport" class="btn btn-primary btn-sm">Importar</div>
                 <span class="preview" id="pvImport"></span>
@@ -326,13 +344,16 @@
 
             <div class="group-label">Marcador em cada corte</div>
             <div class="edit-row">
-                <select id="cutTracks" class="input">
+                <span class="edit-label"></span>
+                <select id="cutTracks" class="input field">
                     <option value="video">Só clipes de vídeo</option>
                     <option value="audio">Só clipes de áudio</option>
                     <option value="both">Clipes de vídeo e áudio</option>
                 </select>
-                <span class="field-label">Nome</span>
-                <input id="cutPrefix" class="input" type="text" placeholder="Corte" />
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Nome</span>
+                <input id="cutPrefix" class="input field" type="text" placeholder="Corte" />
                 <div role="button" id="btnCutMarkers" class="btn btn-primary btn-sm">Criar</div>
                 <span class="preview" id="pvCut"></span>
             </div>
@@ -355,8 +376,8 @@
 
             <div class="group-label">Planilha (CSV)</div>
             <div class="edit-row">
-                <span class="field-label">Separador</span>
-                <select id="csvSep" class="input">
+                <span class="edit-label">Separador</span>
+                <select id="csvSep" class="input mid">
                     <option value=";">Ponto e vírgula</option>
                     <option value=",">Vírgula</option>
                 </select>
@@ -366,7 +387,8 @@
 
             <div class="group-label">Outros formatos</div>
             <div class="edit-row">
-                <select id="otherFormat" class="input">
+                <span class="edit-label">Formato</span>
+                <select id="otherFormat" class="input mid">
                     <option value="review">Lista de revisão (.txt)</option>
                     <option value="txt">Texto simples (.txt)</option>
                     <option value="json">JSON (.json)</option>
