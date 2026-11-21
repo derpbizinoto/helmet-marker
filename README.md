@@ -58,6 +58,17 @@ Every time:
 5. If `manifest.json` changes, click **Unload** and then **Load** again.
 6. **Debug** opens the panel console.
 
+## Load without the UXP Developer Tool (copying the folder)
+
+This worked on Premiere 26.5.2, but Adobe does not document it.
+
+1. In Premiere, go to **Settings › Plugins**, check **Enable developer mode** and close Premiere.
+2. Create the folder `%APPDATA%\Adobe\UXP\Plugins\External\com.derpbizinoto.helmetmarker_<version>` (e.g. `..._0.3.0`).
+3. Copy **the contents** of the `plugin\` folder into it (not the folder itself).
+4. Open Premiere: **Window › UXP Plugins › Helmet Marker**.
+
+After each update, copy the files again and restart Premiere. If the version changes, the folder name changes too: create the new one and delete the old one.
+
 ## Package (.ccx)
 
 - **Script:** in the project folder, run

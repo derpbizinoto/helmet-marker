@@ -81,6 +81,18 @@
     function fieldText(id) { var v = $(id).value; return v === null || v === undefined ? "" : String(v); }
     // Número digitado; campo vazio vira NaN (as checagens do core recusam com mensagem), nunca 0.
     function numField(id) { var t = fieldText(id).trim().replace(",", "."); return t === "" ? NaN : Number(t); }
+    // Valor escolhido numa lista. No Premiere 26.5.2 uma lista pode ficar sem escolha (em
+    // branco, value vazio): aí vale a primeira opção, e a lista passa a mostrá-la.
+    function selValue(id) {
+        var sel = $(id), values = [];
+        for (var i = 0; i < sel.childNodes.length; i++) {
+            var o = sel.childNodes[i];
+            if (o.tagName === "OPTION") values.push(o.getAttribute("value") || "");
+        }
+        var v = sel.value === null || sel.value === undefined ? "" : String(sel.value);
+        if (values.length && values.indexOf(v) < 0) { v = values[0]; sel.value = v; }
+        return v;
+    }
     function setField(id, text) { $(id).value = text === null || text === undefined ? "" : String(text); }
     function now() { return new Date().toLocaleTimeString(); }
 
@@ -451,14 +463,14 @@
         var sel = selected();
         var none = tr("Selecione marcadores na lista.");
         var change = N("Vai alterar {0} marcador(es).");
-        setText($("pvColor"), sel.length ? previewText(function () { return PL.planColor(sel, $("editColor").value).length; }, change) : none);
+        setText($("pvColor"), sel.length ? previewText(function () { return PL.planColor(sel, selValue("editColor")).length; }, change) : none);
         setText($("pvName"), sel.length ? previewText(function () { return PL.planName(sel, fieldText("editName")).length; }, change) : none);
-        setText($("pvComment"), sel.length ? previewText(function () { return PL.planComments(sel, fieldText("editComment"), $("editCommentMode").value).length; }, change) : none);
-        setText($("pvType"), sel.length ? previewText(function () { return PL.planType(sel, $("editType").value).length; }, change) : none);
+        setText($("pvComment"), sel.length ? previewText(function () { return PL.planComments(sel, fieldText("editComment"), selValue("editCommentMode")).length; }, change) : none);
+        setText($("pvType"), sel.length ? previewText(function () { return PL.planType(sel, selValue("editType")).length; }, change) : none);
         setText($("pvDelete"), sel.length ? tr("Vai excluir {0} marcador(es).", sel.length) : none);
 
         setText($("pvReplace"), sel.length ? previewText(function () {
-            return PL.planReplace(sel, fieldText("findText"), fieldText("replaceText"), $("findFields").value, state.matchCase).length;
+            return PL.planReplace(sel, fieldText("findText"), fieldText("replaceText"), selValue("findFields"), state.matchCase).length;
         }, change) : none);
         setText($("pvNumber"), sel.length ? numberPreview(sel) : none);
         var tpl = currentTemplate();
@@ -573,7 +585,7 @@
         setEnabled("btnImport", ready && !!fieldText("impText").trim());
         setEnabled("btnCutMarkers", ready);
         setEnabled("btnSeqRefresh", ready);
-        setEnabled("btnCopy", canExport && $("copyTarget").value && $("copyTarget").value !== "none");
+        setEnabled("btnCopy", canExport && selValue("copyTarget") && selValue("copyTarget") !== "none");
         ["btnClipToSeq", "btnSeqToClip", "btnSelPending", "btnSelDone"].forEach(function (id) { setEnabled(id, ready); });
         ["btnDone", "btnUndone"].forEach(function (id) { setEnabled(id, ready && n); });
         setClass($("chipImpSkip"), "chip" + (state.impSkip ? " on" : ""));
@@ -627,7 +639,7 @@
     }
 
     function onColor() {
-        runEdit(function () { return PL.planColor(needSelection(), $("editColor").value); },
+        runEdit(function () { return PL.planColor(needSelection(), selValue("editColor")); },
             tr("Helmet Marker: mudar cor"), N("Cor alterada em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
     function onName() {
@@ -635,11 +647,11 @@
             tr("Helmet Marker: mudar nome"), N("Nome alterado em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
     function onComment() {
-        runEdit(function () { return PL.planComments(needSelection(), fieldText("editComment"), $("editCommentMode").value); },
+        runEdit(function () { return PL.planComments(needSelection(), fieldText("editComment"), selValue("editCommentMode")); },
             tr("Helmet Marker: mudar comentário"), N("Comentário alterado em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
     function onType() {
-        runEdit(function () { return PL.planType(needSelection(), $("editType").value); },
+        runEdit(function () { return PL.planType(needSelection(), selValue("editType")); },
             tr("Helmet Marker: mudar tipo"), N("Tipo alterado em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
 
@@ -690,7 +702,7 @@
     // ---------- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------
     function durationFrames() {
         var v = numField("durValue");
-        if ($("durUnit").value !== "frames") {
+        if (selValue("durUnit") !== "frames") {
             if (!isFinite(v) || v < 0) throw new Error("A duração precisa ser um número de 0 ou mais.");
             return PL.secondsToFrames(v, state.ctx.info);
         }
@@ -715,7 +727,7 @@
     function onSnap() {
         runEdit(async function () {
             var sel = needSelection();
-            var cuts = await P.getCutFrames(state.ctx, $("snapTracks").value);
+            var cuts = await P.getCutFrames(state.ctx, selValue("snapTracks"));
             return PL.planSnap(sel, cuts, numField("snapMax"));
         }, tr("Helmet Marker: encaixar no corte"), N("Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz."));
     }
@@ -785,7 +797,7 @@
     // ---------- fase 2: localizar, numerar, modelos ----------
     function onReplace() {
         runEdit(function () {
-            return PL.planReplace(needSelection(), fieldText("findText"), fieldText("replaceText"), $("findFields").value, state.matchCase);
+            return PL.planReplace(needSelection(), fieldText("findText"), fieldText("replaceText"), selValue("findFields"), state.matchCase);
         }, tr("Helmet Marker: localizar e substituir"), N("Texto substituído em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
 
@@ -867,10 +879,10 @@
             var tpl = LIB.makeTemplate({
                 name: fieldText("tplName"),
                 markerName: fieldText("tplMarkerName"),
-                color: $("tplColor").value,
-                type: $("tplType").value,
+                color: selValue("tplColor"),
+                type: selValue("tplType"),
                 comments: fieldText("tplComment"),
-                commentMode: $("tplCommentMode").value
+                commentMode: selValue("tplCommentMode")
             });
             var list = LIB.upsert(state.templates, tpl);
             saveStore(TPL_KEY, list);
@@ -1056,7 +1068,7 @@
     async function onRelative(side) {
         try {
             var ref;
-            if ($("relRef").value === "playhead") {
+            if (selValue("relRef") === "playhead") {
                 ref = { frame: await P.getPlayheadFrame(state.ctx) };
             } else {
                 if (!state.anchor) throw new Error("Clique num marcador da lista primeiro.");
@@ -1129,7 +1141,7 @@
 
     function csvText() {
         return X.csv(exportTargets(), {
-            sep: $("csvSep").value,
+            sep: selValue("csvSep"),
             info: state.ctx.info,
             dropFrame: state.ctx.dropFrame,
             startFrame: state.ctx.startFrame,
@@ -1146,7 +1158,7 @@
     function otherText() {
         var targets = exportTargets();
         if (!targets.length) throw new Error("Nenhum marcador para exportar.");
-        var fmt = $("otherFormat").value, o = exportOpts();
+        var fmt = selValue("otherFormat"), o = exportOpts();
         if (fmt === "json") {
             o.meta = { name: state.ctx.sequenceName, fps: state.ctx.info.label, dropFrame: !!state.ctx.dropFrame, startTimecode: tcOf(0) };
             return X.json(targets, o);
@@ -1154,7 +1166,7 @@
         return fmt === "txt" ? X.txt(targets, o) : X.reviewList(targets, o);
     }
     function onOtherSave() {
-        var fmt = $("otherFormat").value;
+        var fmt = selValue("otherFormat");
         doSave(otherText, fmt === "review" ? N("revisão") : N("marcadores"), fmt === "json" ? "json" : "txt");
     }
 
@@ -1184,11 +1196,11 @@
     function importResult() {
         var c = state.ctx;
         var r = IM.parse(fieldText("impText"), {
-            format: $("impFormat").value,
+            format: selValue("impFormat"),
             fileName: state.impFileName,
             info: c.info,
             startFrame: c.startFrame,
-            timeBase: $("impBase").value,
+            timeBase: selValue("impBase"),
             colors: c.colors
         });
         var skipped = 0;
@@ -1364,7 +1376,7 @@
 
     async function onCopy() {
         if (state.busy) return;
-        var id = $("copyTarget").value;
+        var id = selValue("copyTarget");
         if (!id || id === "none") { showError(new Error("Escolha a sequência de destino.")); return; }
         state.busy = true;
         updateButtons();
@@ -1567,7 +1579,7 @@
 
     function onCutMarkers() {
         runAdd(async function () {
-            var cuts = await P.getCutFrames(state.ctx, $("cutTracks").value);
+            var cuts = await P.getCutFrames(state.ctx, selValue("cutTracks"));
             var prefix = fieldText("cutPrefix").trim() || tr("Corte");
             var p = PL.planCutMarkers(cuts, state.records, { prefix: prefix + " ", digits: 2 });
             return { items: p.items, emptyMessage: N("Todos os cortes já têm marcador.") };
@@ -1621,14 +1633,7 @@
     // "Clipes de vídeo e áudio". Se o valor não for uma das opções, escolhe a primeira.
     function fixSelects(root) {
         var sels = (root || document).querySelectorAll("select");
-        for (var i = 0; i < sels.length; i++) {
-            var sel = sels[i], values = [];
-            for (var j = 0; j < sel.childNodes.length; j++) {
-                var o = sel.childNodes[j];
-                if (o.tagName === "OPTION") values.push(o.getAttribute("value") || "");
-            }
-            if (values.length && values.indexOf(sel.value) < 0) sel.value = values[0];
-        }
+        for (var i = 0; i < sels.length; i++) if (sels[i].id) selValue(sels[i].id);
     }
 
     function toggleCard(key) {
@@ -1808,7 +1813,7 @@
         state.scrollSpeed = loadScrollSpeed();
         $("scrollSpeed").value = String(state.scrollSpeed);
         on("scrollSpeed", "change", function () {
-            state.scrollSpeed = Number($("scrollSpeed").value) || 1;
+            state.scrollSpeed = Number(selValue("scrollSpeed")) || 1;
             try { window.localStorage.setItem(SCROLL_KEY, String(state.scrollSpeed)); } catch (e) { /* só nesta sessão */ }
         });
         setupScrolling();
@@ -1831,8 +1836,8 @@
 
         // filtros
         on("filterText", "input", function () { state.filters.text = fieldText("filterText"); filtersChanged(); });
-        on("filterType", "change", function () { var v = $("filterType").value; state.filters.type = v === "any" ? "" : v; filtersChanged(); });
-        on("filterDuration", "change", function () { state.filters.duration = $("filterDuration").value; filtersChanged(); });
+        on("filterType", "change", function () { var v = selValue("filterType"); state.filters.type = v === "any" ? "" : v; filtersChanged(); });
+        on("filterDuration", "change", function () { state.filters.duration = selValue("filterDuration"); filtersChanged(); });
         on("colorChips", "click", onColorChip);
         on("chipInOut", "click", toggleInOut);
         on("btnClearFilters", "click", clearFilters);

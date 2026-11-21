@@ -9,11 +9,11 @@
 - Criar um marcador no começo de cada clipe (só vídeo, só áudio ou os dois), numerado.
 - Exportar também lista de revisão ("1. timecode — comentário"), texto simples e JSON.
 - Painel mais leve: só redesenha o que mudou, as prévias esperam um instante depois do clique, a verificação automática faz uma leitura leve e o fundo usa cores sólidas no lugar de degradês. Cartões recolhíveis (clique no título; o painel lembra quais ficam abertos): cartão fechado não pesa. O diagnóstico só se atualiza aberto e mostra quanto tempo a lista levou e a maior travada do painel.
-- Corrigido: engasgada no começo/fim da rolagem. O Premiere faz um pequeno "elástico" ao chegar na ponta, e o painel o multiplicava; agora, logo depois de encostar na ponta, movimentos pequenos não são multiplicados. O Diagnóstico mostra os últimos avisos de rolagem.
-- Corrigido: campo vazio chega como nulo no Premiere. Nos campos de texto isso podia virar "null"; nos de número, virar 0 sem aviso (agora dá mensagem); na edição direto na lista, apagar o nome não fazia nada.
-- Corrigido: a rolagem dava uma engasgada e voltava um pouco ao chegar no começo ou no fim; agora chega até o fim e arrastar a barra de rolagem não é mais multiplicado.
-- Corrigido: erro "Cannot read properties of null (reading 'trim')" (no Premiere o campo de texto vazio vem como nulo).
-- Duração: mesma duração para vários marcadores (em segundos ou frames) e tornar pontuais.
+- Corrigido: engasgada no começo/fim da rolagem. O Premiere faz um pequeno "elástico" ao chegar na ponta, e o painel o multiplicava; agora, logo depois de encostar na ponta, movimentos pequenos não são multiplicados, a rolagem chega até o fim e arrastar a barra de rolagem não é multiplicado. O Diagnóstico mostra os últimos avisos de rolagem.
+- Corrigido: campo vazio chega como nulo no Premiere (erro "Cannot read properties of null (reading 'trim')"). Nos campos de texto isso podia virar "null"; nos de número, virar 0 sem aviso (agora dá mensagem); na edição direto na lista, apagar o nome não fazia nada.
+- Corrigido (revisão do código): escolher um modelo não preenchia os campos, salvar uma seleção mostrava erro mesmo salvando e "Limpar filtros" dava erro.
+- Corrigido: listas que apareciam em branco no Premiere (a unidade da duração e as trilhas do encaixe). Lista sem escolha agora usa a primeira opção.
+- Duração: mesma duração para vários marcadores (em segundos, aceitando 2,5 ou 2.5, ou em frames) e tornar pontuais.
 - Distribuir igualmente entre o primeiro e o último selecionado.
 - Encaixar no corte mais próximo (começo/fim dos clipes de vídeo e/ou áudio), até uma distância máxima.
 - Remover duplicados e mesclar marcadores próximos juntando os comentários (com confirmação).

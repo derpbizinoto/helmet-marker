@@ -258,6 +258,12 @@ test("todos os arquivos do painel são JavaScript válido", () => {
         assert.doesNotThrow(() => new vm.Script(read(rel), { filename: rel }), rel);
     });
 });
+test("painel lê as listas por selValue (lista em branco vira a 1ª opção)", () => {
+    const src = read("ui/panel.js");
+    const ids = [...read("index.html").matchAll(/<select id="([^"]+)"/g)].map((m) => m[1]);
+    const bad = ids.filter((id) => new RegExp("\$\(\"" + id + "\"\)\.value(?!\s*=[^=])").test(src));
+    assert.deepStrictEqual(bad, []);
+});
 test("painel nunca escreve num campo por fieldText (só lê)", () => {
     const src = read("ui/panel.js");
     assert.ok(!/fieldText\([^)]*\)\s*=[^=]/.test(src), "use setField para escrever");
