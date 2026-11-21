@@ -258,7 +258,9 @@
 
             <div class="group-label">Duração</div>
             <div class="edit-row">
-                <input id="durValue" class="input num" type="number" value="1" />
+                <!-- texto, não "number": o campo de número do Premiere arredonda 2,5 para 3 e lê
+                     2.5 como 25 (ponto de milhar); o painel lê o número aceitando vírgula ou ponto -->
+                <input id="durValue" class="input num" type="text" value="1" />
                 <select id="durUnit" class="input">
                     <option value="seconds">segundos</option>
                     <option value="frames">frames</option>

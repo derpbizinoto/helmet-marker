@@ -250,6 +250,9 @@ test("planShift recusa ir antes do início e frações", () => {
     assert.throws(() => PL.planShift([{ startFrame: 5 }], -6), /antes do início/);
     assert.throws(() => PL.planShift([{ startFrame: 5 }], 1.5), /inteiro/);
 });
+test("duração é campo de texto (o campo de número do Premiere estraga 2,5 e 2.5)", () => {
+    assert.ok(/<input id="durValue"[^>]*type="text"/.test(read("index.html")));
+});
 test("painel nunca escreve num campo por fieldText (só lê)", () => {
     const src = read("ui/panel.js");
     assert.ok(!/fieldText\([^)]*\)\s*=[^=]/.test(src), "use setField para escrever");
