@@ -1427,14 +1427,23 @@
     // Plano B (Premiere 26.5.2 não entrega "wheel"): quando a área rola sozinha um passo
     // pequeno, o painel soma (N − 1) passos iguais na mesma direção. Com o botão do mouse
     // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
-    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, edge: {} };
+    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, edge: {}, x: -1, y: -1 };
     var EDGE_MS = 250;
+    var SCROLLBAR_ZONE = 24;   // px junto à borda direita: área da barra de rolagem
 
-    function maxScroll(el) { return Math.max(0, (el.scrollHeight || 0) - (el.clientHeight || 0)); }
+    // Arrastar a barra de rolagem também gera passos pequenos, e o Premiere não entrega o clique
+    // na barra (testado no 26.5.2: "várias engasgadas"). Então, com o cursor perto da borda
+    // direita da área, o painel não multiplica nada.
+    function nearScrollbar(el) {
+        if (amp.x < 0 || !el.getBoundingClientRect) return false;
+        var r = el.getBoundingClientRect();
+        return amp.x >= r.right - SCROLLBAR_ZONE && amp.x <= r.right + 4 && amp.y >= r.top && amp.y <= r.bottom;
+    }
 
-    // Nas pontas (começo ou fim), a rolagem do Premiere passa do limite e volta um pouco; antes o
-    // painel ainda multiplicava essa volta (a "engasgada"). Agora: o destino é limitado às
-    // pontas e, logo depois de encostar numa ponta, um recuo pequeno é desfeito (fica na ponta).
+    // Nas pontas (começo ou fim), a rolagem do Premiere passa do limite e volta um pouco; o
+    // painel multiplicava essa volta (a "engasgada"). Agora, logo depois de encostar numa ponta,
+    // um recuo pequeno é desfeito. A ponta é a que o próprio Premiere aceita (o painel pede um
+    // valor e lê de volta), não uma conta nossa: a conta com scrollHeight deixava sobrar um pouco.
     function onScrollAmplify(e) {
         var el = e.currentTarget || e.target;
         if (!el || !el.id) return;
@@ -1445,22 +1454,20 @@
         if (amp.own[id]) { amp.own[id] = false; return; }          // rolagem feita por nós
         if (amp.quietUntil && amp.quietUntil[id] > Date.now()) return;   // lista sendo redesenhada
         if (state.wheelSeen || state.scrollSpeed <= 1 || amp.mouseDown || last === undefined) return;
+        if (nearScrollbar(el)) { amp.edge[id] = null; return; }      // arrastando a barra
         var d = cur - last;
         if (!d || Math.abs(d) > 200) return;                          // salto grande: não é a roda
 
         var edge = amp.edge[id], now = Date.now();
-        if (edge && now - edge.at < EDGE_MS) {
-            // recuo logo depois de encostar na ponta: é o "volta um pouco" do Premiere
-            if ((d > 0) !== (edge.dir > 0) && Math.abs(d) <= edge.step * 3) {
-                setScroll(el, id, edge.pos);
-                return;
-            }
+        if (edge && now - edge.at < EDGE_MS && (d > 0) !== (edge.dir > 0) && Math.abs(d) <= edge.step * 3) {
+            setScroll(el, id, edge.pos);                              // o "volta um pouco" do Premiere
+            return;
         }
 
-        var max = maxScroll(el);
-        var target = Math.max(0, Math.min(max, cur + d * (state.scrollSpeed - 1)));
-        if (target !== cur) setScroll(el, id, target);
-        if (target <= 0 || target >= max) amp.edge[id] = { at: now, dir: d, step: Math.abs(d), pos: target };
+        var want = Math.max(0, cur + d * (state.scrollSpeed - 1));
+        var got = setScroll(el, id, want);
+        // encostou numa ponta: o Premiere não deixou ir até onde pedimos (ou chegou no 0)
+        if (Math.abs(got - want) > 1 || got <= 0) amp.edge[id] = { at: now, dir: d, step: Math.abs(d), pos: got };
         else amp.edge[id] = null;
     }
 
@@ -1470,6 +1477,7 @@
         el.scrollTop = pos;
         if (el.scrollTop === before) amp.own[id] = false;             // não mexeu: não vem aviso
         amp.last[id] = el.scrollTop;
+        return el.scrollTop;
     }
 
     function setupScrolling() {
@@ -1478,6 +1486,9 @@
             el.addEventListener("wheel", onWheel, { passive: false });
             el.addEventListener("scroll", onScrollAmplify);
             amp.last[id] = el.scrollTop;
+        });
+        ["mousemove", "pointermove"].forEach(function (ev) {
+            document.addEventListener(ev, function (e) { amp.x = e.clientX; amp.y = e.clientY; });
         });
         ["mousedown", "pointerdown"].forEach(function (ev) {
             document.addEventListener(ev, function () { amp.mouseDown = true; });
