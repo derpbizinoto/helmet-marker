@@ -20,7 +20,7 @@
 //   sequence.getPlayerPosition / setPlayerPosition (25.6), sequence.getInPoint / getOutPoint (25.6)
 //   markers.createRemoveMarkerAction (25.6), marker.createSetNameAction / createSetCommentsAction /
 //   createSetTypeAction (25.6; tipos "Comment", "Chapter", "Segmentation", "WebLink")
-//   marker.createSetDurationAction(TickTime) (25.6)
+//   marker.createSetDurationAction(TickTime) (25.6), TickTime.createWithTicks(string) (25.6)
 //   sequence.getVideoTrackCount / getVideoTrack / getAudioTrackCount / getAudioTrack (25.6, Promise)
 //   VideoTrack/AudioTrack.getTrackItems(Constants.TrackItemType, includeEmpty) (25.6, sem Promise)
 //   VideoClipTrackItem/AudioClipTrackItem.getStartTime / getEndTime (25.6, Promise<TickTime>)
@@ -196,7 +196,13 @@ var HMPremiere = (function () {
                 if (typeof p.name === "string") add(m.createSetNameAction(p.name));
                 if (typeof p.comments === "string") add(m.createSetCommentsAction(p.comments));
                 if (typeof p.type === "string") add(m.createSetTypeAction(typeValue(p.type)));
-                if (durs[i]) add(m.createSetDurationAction(durs[i]));
+                if (durs[i]) {
+                    add(m.createSetDurationAction(durs[i]));
+                    // A timeline não redesenha só com a duração (testado no 26.5.2): "mover" o
+                    // marcador para o próprio início, na mesma transação, para forçar o redesenho.
+                    // Usa os ticks exatos (TickTime.createWithTicks, 25.6), então nada sai do lugar.
+                    if (!times[i]) add(ctx.markersObj.createMoveMarkerAction(m, ppro().TickTime.createWithTicks(String(p.record.startTicks))));
+                }
             });
         });
         return true;
@@ -211,18 +217,6 @@ var HMPremiere = (function () {
     async function setPlayheadFrame(ctx, frame) {
         var ok = await ctx.sequence.setPlayerPosition(tickAtFrame(ctx, frame));
         if (ok === false) throw new Error("O Premiere não moveu o playhead.");
-        return true;
-    }
-
-    // O Premiere nem sempre redesenha a timeline depois de uma mudança feita pela API (visto
-    // com a duração dos marcadores: só aparecia depois de clicar na timeline). Mexer o playhead
-    // 1 frame e devolver costuma forçar o redesenho. Só usa getPlayerPosition/setPlayerPosition.
-    async function refreshTimeline(ctx) {
-        var t = await ctx.sequence.getPlayerPosition();
-        if (!t) return false;
-        var frame = T.frameFromTicks(t.ticksNumber, ctx.ticksPerFrame).frame;
-        await ctx.sequence.setPlayerPosition(tickAtFrame(ctx, frame + 1));
-        await ctx.sequence.setPlayerPosition(t);
         return true;
     }
 
@@ -344,7 +338,6 @@ var HMPremiere = (function () {
         setPlayheadFrame: setPlayheadFrame,
         getInOut: getInOut,
         getCutFrames: getCutFrames,
-        refreshTimeline: refreshTimeline,
         saveTextFile: saveTextFile,
         copyText: copyText,
         listen: listen

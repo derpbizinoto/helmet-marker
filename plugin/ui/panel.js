@@ -520,12 +520,6 @@
         $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
     }
 
-    // Pede ao Premiere para redesenhar a timeline (ver P.refreshTimeline). Se falhar, a
-    // alteração já foi feita: só não aparece até clicar na timeline, então não vira erro.
-    function redrawTimeline() {
-        return P.refreshTimeline(state.ctx).catch(function () { /* a alteração já foi feita */ });
-    }
-
     // ---------- operações ----------
     // Relê antes (marcadores "vivos" e atualizados), monta o plano, aplica numa transação e relê.
     async function runEdit(buildPlan, undoLabel, doneKey) {
@@ -542,7 +536,6 @@
             }
             P.applyPlan(state.ctx, plan, undoLabel);
             message = tr(doneKey, plan.length);
-            await redrawTimeline();
         } catch (e) {
             showError(e);
             return;
@@ -726,7 +719,7 @@
             state.busy = false;
             updateButtons();
         }
-        if (message) redrawTimeline().then(function () { return read(N("depois de uma operação do painel"), true, message); }).catch(showError);
+        if (message) read(N("depois de uma operação do painel"), true, message).catch(showError);
     }
 
     // ---------- fase 2: localizar, numerar, modelos ----------
@@ -782,7 +775,6 @@
                     kind = "warn";
                 }
             }
-            await redrawTimeline();
         } catch (e) {
             showError(e);
             message = null;
