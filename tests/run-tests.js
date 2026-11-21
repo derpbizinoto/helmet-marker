@@ -436,6 +436,80 @@ test("seleção salva: acha o que está na lista e conta o que sumiu", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Fase 2 (parte B): duração, distribuir, grade, cortes, duplicados
+// ---------------------------------------------------------------------------
+
+test("duração: mesma para todos, 0 = pontual, recusa fração e negativo", () => {
+    const p = PL.planDuration(RECS, 50);
+    assert.ok(p.every((x) => x.durationFrames === 50));
+    assert.ok(!p.some((x) => x.record.key === "c"));            // já tinha 50
+    assert.deepStrictEqual(PL.planDuration(RECS, 0).map((x) => x.record.key), ["c"]);
+    assert.throws(() => PL.planDuration(RECS, 1.5), /inteiro de 0 ou mais/);
+    assert.throws(() => PL.planDuration(RECS, -1), /inteiro de 0 ou mais/);
+});
+test("distribuir: primeiro e último ficam, meio igualmente espaçado em frames inteiros", () => {
+    const r = [rec("a", 0), rec("d", 100), rec("b", 10), rec("c", 11)];
+    const p = PL.planDistribute(r);
+    const to = {};
+    p.forEach((x) => { to[x.record.key] = x.toFrame; });
+    assert.deepStrictEqual(to, { b: 33, c: 67 });
+    assert.ok(p.every((x) => Number.isInteger(x.toFrame)));
+    assert.throws(() => PL.planDistribute(r.slice(0, 2)), /pelo menos 3/);
+});
+test("grade em frames: vai para a linha mais próxima a partir do início escolhido", () => {
+    const r = [rec("a", 7), rec("b", 14), rec("c", 30), rec("d", 46)];
+    const p = PL.planQuantize(r, { mode: "frames", value: 10, originFrame: 0 });
+    const to = {};
+    p.forEach((x) => { to[x.record.key] = x.toFrame; });
+    assert.deepStrictEqual(to, { a: 10, b: 10, d: 50 });
+    const q = PL.planQuantize([rec("a", 7)], { mode: "frames", value: 10, originFrame: 3 });
+    assert.strictEqual(q[0].toFrame, 3);
+    assert.throws(() => PL.planQuantize(r, { mode: "frames", value: 0 }), /intervalo da grade/);
+});
+test("grade nunca leva marcador para antes do frame 0", () => {
+    const p = PL.planQuantize([rec("a", 0)], { mode: "frames", value: 30, originFrame: 20 });
+    assert.strictEqual(p[0].toFrame, 20);
+});
+test("grade por BPM usa o fps real e arredonda para frame inteiro", () => {
+    const i25 = T.rateInfo(25), i2997 = T.rateInfo(30000 / 1001);
+    assert.strictEqual(PL.gridStep({ mode: "bpm", value: 120, beats: 1 }, i25), 12.5);
+    assert.strictEqual(PL.gridStep({ mode: "bpm", value: 120, beats: 4 }, i25), 50);
+    // 120 BPM a 29,97: 14,985 frames por batida; batida 100 = 1498,5 -> 1499 (não 1500)
+    assert.strictEqual(PL.nearestOnGrid(1497, 0, PL.gridStep({ mode: "bpm", value: 120 }, i2997)), 1499);
+    const p = PL.planQuantize([rec("a", 13), rec("b", 24)], { mode: "bpm", value: 120, beats: 1, originFrame: 0 }, i25);
+    // 13 já está na batida 1 (12,5 arredonda para 13): não muda; 24 vai para a batida 2 (25)
+    assert.deepStrictEqual(p.map((x) => x.record.key + "=" + x.toFrame), ["b=25"]);
+    assert.ok(p.every((x) => Number.isInteger(x.toFrame)));
+    assert.throws(() => PL.gridStep({ mode: "bpm", value: 0 }, i25), /BPM/);
+});
+test("encaixar no corte: corte mais próximo dentro da distância; empate vai para o anterior", () => {
+    const r = [rec("a", 12), rec("b", 50), rec("c", 100), rec("d", 15)];
+    const p = PL.planSnap(r, [10, 20, 100, 60], 5);
+    const to = {};
+    p.forEach((x) => { to[x.record.key] = x.toFrame; });
+    assert.deepStrictEqual(to, { a: 10, d: 10 });
+    assert.throws(() => PL.planSnap(r, [], 5), /Não há clipes/);
+    assert.throws(() => PL.planSnap(r, [10], 0), /distância máxima/);
+});
+test("duplicados: mesmo frame com 0; grupos contados a partir do primeiro", () => {
+    const r = [rec("a", 0), rec("b", 0), rec("c", 3), rec("d", 6), rec("e", 100)];
+    assert.deepStrictEqual(PL.planDedupe(r, 0).map((x) => x.record.key), ["b"]);
+    // tolerância 4: grupo {a,b,c} (até frame 4), d começa grupo novo sozinho
+    assert.deepStrictEqual(PL.planDedupe(r, 4).map((x) => x.record.key), ["b", "c"]);
+    assert.ok(PL.planDedupe(r, 4).every((x) => x.remove));
+    assert.throws(() => PL.planDedupe(r, -1), /distância/);
+});
+test("mesclar: junta comentários sem repetir, herda nome, exclui os outros", () => {
+    const r = [rec("a", 0, { comments: "áudio" }), rec("b", 2, { name: "Cena", comments: "cor" }), rec("c", 3, { comments: "áudio" }), rec("z", 90)];
+    const p = PL.planMerge(r, 5);
+    const keep = p.find((x) => x.record.key === "a");
+    assert.strictEqual(keep.comments, "áudio | cor");
+    assert.strictEqual(keep.name, "Cena");
+    assert.deepStrictEqual(p.filter((x) => x.remove).map((x) => x.record.key), ["b", "c"]);
+    assert.strictEqual(PL.planMerge([rec("x", 0), rec("y", 50)], 5).length, 0);
+});
+
+// ---------------------------------------------------------------------------
 // Exportação (fase 1)
 // ---------------------------------------------------------------------------
 

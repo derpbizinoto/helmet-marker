@@ -415,6 +415,8 @@
         else if (!tpl) $("pvTpl").textContent = tr("Escolha um modelo.");
         else $("pvTpl").textContent = sel.length ? previewText(function () { return PL.planTemplate(sel, tpl).length; }, change) : none;
 
+        if (hasSeq()) partBPreviews(sel, none, change);
+
         if (state.afterPlayheadOn) $("pvMove").textContent = tr("Vai mover todos os marcadores a partir do playhead.");
         else $("pvMove").textContent = sel.length ? tr("Vai mover {0} marcador(es).", sel.length) : none;
 
@@ -509,6 +511,8 @@
         setEnabled("btnSavedDelete", !!saved);
         setEnabled("btnSavedSave", ready && n);
         $("chipMatchCase").className = "chip" + (state.matchCase ? " on" : "");
+        ["btnDuration", "btnPoint", "btnGrid", "btnSnap", "btnDedupe", "btnMerge"].forEach(function (id) { setEnabled(id, ready && n); });
+        setEnabled("btnDistribute", ready && n >= 3);
         $("chipInOut").className = "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled");
         $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
     }
@@ -594,13 +598,106 @@
                 tr("Helmet Marker: excluir marcadores"), N("Marcadores excluídos: {0}. Um Ctrl+Z desfaz."));
         };
         $("confirmText").textContent = tr("Excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.", n);
+        show($("confirmClean"), false);
         show($("confirmBar"), true);
     }
     function closeConfirm(run) {
         var fn = state.confirm;
         state.confirm = null;
         show($("confirmBar"), false);
+        show($("confirmClean"), false);
         if (run && fn) fn();
+    }
+
+    // ---------- fase 2 (parte B): duração, distribuir, grade, cortes, limpeza ----------
+    function durationFrames() {
+        var v = Number($("durValue").value);
+        if (!isFinite(v) || Math.round(v) !== v || v < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
+        return $("durUnit").value === "seconds" ? PL.secondsToFrames(v, state.ctx.info) : v;
+    }
+
+    function onDuration() {
+        runEdit(function () { return PL.planDuration(needSelection(), durationFrames()); },
+            tr("Helmet Marker: mudar duração"), N("Duração alterada em {0} marcador(es). Um Ctrl+Z desfaz."));
+    }
+    function onPoint() {
+        runEdit(function () { return PL.planDuration(needSelection(), 0); },
+            tr("Helmet Marker: tornar pontuais"), N("Marcadores que viraram pontuais: {0}. Um Ctrl+Z desfaz."));
+    }
+
+    function onDistribute() {
+        runEdit(function () { return PL.planDistribute(needSelection()); },
+            tr("Helmet Marker: distribuir marcadores"), N("Marcadores distribuídos: {0} movidos. Um Ctrl+Z desfaz."));
+    }
+
+    function gridOptions(originFrame) {
+        return { mode: $("gridMode").value, value: Number($("gridValue").value), beats: Number($("gridBeats").value), originFrame: originFrame };
+    }
+
+    function onGrid() {
+        runEdit(async function () {
+            var sel = needSelection();
+            var origin = $("gridOrigin").value === "playhead" ? await P.getPlayheadFrame(state.ctx) : 0;
+            return PL.planQuantize(sel, gridOptions(origin), state.ctx.info);
+        }, tr("Helmet Marker: alinhar à grade"), N("Marcadores alinhados à grade: {0}. Um Ctrl+Z desfaz."));
+    }
+
+    function onSnap() {
+        runEdit(async function () {
+            var sel = needSelection();
+            var cuts = await P.getCutFrames(state.ctx, $("snapTracks").value);
+            return PL.planSnap(sel, cuts, Number($("snapMax").value));
+        }, tr("Helmet Marker: encaixar no corte"), N("Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz."));
+    }
+
+    function cleanCounts(plan) {
+        var removed = plan.filter(function (p) { return p.remove; }).length;
+        return { removed: removed, kept: plan.length - removed };
+    }
+
+    // Remover e mesclar excluem marcadores, então pedem confirmação (como o Excluir).
+    function onClean(kind) {
+        try {
+            var plan = kind === "merge" ? PL.planMerge(needSelection(), Number($("cleanTol").value))
+                : PL.planDedupe(needSelection(), Number($("cleanTol").value));
+            var n = cleanCounts(plan).removed;
+            if (!n) { setStatus(tr("Nenhum duplicado ou marcador próximo nessa distância."), "warn"); return; }
+            state.confirm = function () {
+                runEdit(function () {
+                    var tol = Number($("cleanTol").value);
+                    return kind === "merge" ? PL.planMerge(needSelection(), tol) : PL.planDedupe(needSelection(), tol);
+                }, kind === "merge" ? tr("Helmet Marker: mesclar marcadores") : tr("Helmet Marker: remover duplicados"),
+                kind === "merge" ? N("Mesclagem feita: {0} alteração(ões). Um Ctrl+Z desfaz.") : N("Duplicados removidos: {0}. Um Ctrl+Z desfaz."));
+            };
+            $("confirmCleanText").textContent = kind === "merge"
+                ? tr("Mesclar e excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.", n)
+                : tr("Excluir {0} marcador(es) duplicado(s)? Dá para desfazer com Ctrl+Z.", n);
+            show($("confirmBar"), false);
+            show($("confirmClean"), true);
+        } catch (e) {
+            showError(e);
+        }
+    }
+
+    function partBPreviews(sel, none, change) {
+        $("pvDuration").textContent = sel.length ? previewText(function () { return PL.planDuration(sel, durationFrames()).length; }, change) : none;
+        $("pvDistribute").textContent = sel.length ? previewText(function () { return PL.planDistribute(sel).length; }, change) : none;
+        // A grade a partir do playhead depende de onde ele está: a prévia usa o início da sequência
+        // só para validar os números.
+        $("pvGrid").textContent = !sel.length ? none : previewText(function () {
+            PL.gridStep(gridOptions(0), state.ctx.info);
+            return $("gridOrigin").value === "playhead" ? sel.length : PL.planQuantize(sel, gridOptions(0), state.ctx.info).length;
+        }, $("gridOrigin").value === "playhead" ? N("Vai alinhar {0} marcador(es) (os que já estiverem na grade não mudam).") : change);
+        $("pvSnap").textContent = sel.length ? tr("Os cortes são lidos ao clicar.") : none;
+        $("pvClean").textContent = !sel.length ? none : (function () {
+            try {
+                var tol = Number($("cleanTol").value);
+                var d = cleanCounts(PL.planDedupe(sel, tol)).removed;
+                if (!d) return tr("Nenhum duplicado ou marcador próximo nessa distância.");
+                return tr("Grupos encontrados: vai excluir {0} marcador(es).", d);
+            } catch (e) { return errText(e); }
+        })();
+        show($("gridBeats"), $("gridMode").value === "bpm");
     }
 
     function onTest() {
@@ -1109,6 +1206,20 @@
         on("btnSavedLoad", "click", onSavedLoad);
         on("btnSavedDelete", "click", onSavedDelete);
         on("btnSavedSave", "click", onSavedSave);
+
+        // fase 2 (parte B)
+        show($("confirmClean"), false);
+        on("btnDuration", "click", onDuration);
+        on("btnPoint", "click", onPoint);
+        on("btnDistribute", "click", onDistribute);
+        on("btnGrid", "click", onGrid);
+        on("btnSnap", "click", onSnap);
+        on("btnDedupe", "click", function () { onClean("dedupe"); });
+        on("btnMerge", "click", function () { onClean("merge"); });
+        on("btnCleanYes", "click", function () { closeConfirm(true); });
+        on("btnCleanNo", "click", function () { closeConfirm(false); });
+        ["durValue", "gridValue", "snapMax", "cleanTol"].forEach(function (id) { on(id, "input", renderPreviews); });
+        ["durUnit", "gridMode", "gridBeats", "gridOrigin", "snapTracks"].forEach(function (id) { on(id, "change", renderPreviews); });
 
         window.addEventListener("error", function (e) { showError(e.error || e.message); });
         window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });

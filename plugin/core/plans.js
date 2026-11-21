@@ -175,7 +175,148 @@
         return plan;
     }
 
+    // ---------- fase 2 (parte B): duração ----------
+    // Mesma duração para todos (0 = pontual).
+    function planDuration(records, frames) {
+        frames = Number(frames);
+        if (!isInt(frames) || frames < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
+        return records.filter(function (r) { return r.durationFrames !== frames; })
+            .map(function (r) { return { record: r, durationFrames: frames }; });
+    }
+
+    function byFrame(records) {
+        return records.map(function (r, i) { return { r: r, i: i }; })
+            .sort(function (a, b) { return (a.r.startFrame - b.r.startFrame) || (a.i - b.i); })
+            .map(function (o) { return o.r; });
+    }
+
+    // ---------- fase 2 (parte B): distribuir ----------
+    // O primeiro e o último ficam no lugar; os do meio ficam igualmente espaçados (em frames
+    // inteiros, arredondados).
+    function planDistribute(records) {
+        if (records.length < 3) throw new Error("Selecione pelo menos 3 marcadores.");
+        var list = byFrame(records);
+        var first = list[0].startFrame, last = list[list.length - 1].startFrame;
+        var n = list.length - 1;
+        var plan = [];
+        list.forEach(function (r, i) {
+            var to = Math.round(first + i * (last - first) / n);
+            if (to !== r.startFrame) plan.push({ record: r, toFrame: to });
+        });
+        return plan;
+    }
+
+    // ---------- fase 2 (parte B): grade ----------
+    // Grade a partir de originFrame, com passo stepFrames (pode ser fracionário no caso do BPM).
+    // Cada marcador vai para a linha da grade mais próxima, arredondada para um frame inteiro.
+    function nearestOnGrid(frame, originFrame, stepFrames) {
+        var k = Math.round((frame - originFrame) / stepFrames);
+        var to = Math.round(originFrame + k * stepFrames);
+        while (to < 0) { k++; to = Math.round(originFrame + k * stepFrames); }
+        return to;
+    }
+
+    function gridStep(opts, info) {
+        if (opts.mode === "frames") {
+            var f = Number(opts.value);
+            if (!isInt(f) || f < 1) throw new Error("O intervalo da grade precisa ser um número inteiro de frames (1 ou mais).");
+            return f;
+        }
+        if (opts.mode === "bpm") {
+            var bpm = Number(opts.value), beats = Number(opts.beats || 1);
+            if (!isFinite(bpm) || bpm <= 0 || bpm > 999) throw new Error("O BPM precisa ser um número maior que 0 (até 999).");
+            if (!isFinite(beats) || beats <= 0) throw new Error("Divisão da batida inválida.");
+            if (!info || !info.fps) throw new Error("Sem informações da taxa de quadros.");
+            return info.fps * 60 / bpm * beats;    // frames por linha da grade (fps real: 29,97 etc.)
+        }
+        throw new Error("Escolha o tipo de grade.");
+    }
+
+    function planQuantize(records, opts, info) {
+        var step = gridStep(opts, info);
+        var origin = Number(opts.originFrame || 0);
+        if (!isInt(origin) || origin < 0) throw new Error("Início da grade inválido.");
+        return records.map(function (r) { return { record: r, toFrame: nearestOnGrid(r.startFrame, origin, step) }; })
+            .filter(function (p) { return p.toFrame !== p.record.startFrame; });
+    }
+
+    // ---------- fase 2 (parte B): encaixar no corte ----------
+    // cuts: frames de início/fim dos clipes. Só encaixa se o corte estiver a até maxDistance frames.
+    // Empate: o corte anterior.
+    function planSnap(records, cuts, maxDistance) {
+        maxDistance = Number(maxDistance);
+        if (!isInt(maxDistance) || maxDistance < 1) throw new Error("A distância máxima precisa ser um número inteiro de frames (1 ou mais).");
+        var list = (cuts || []).filter(function (c) { return isInt(c) && c >= 0; }).sort(function (a, b) { return a - b; });
+        if (!list.length) throw new Error("Não há clipes nas trilhas escolhidas.");
+        var plan = [];
+        records.forEach(function (r) {
+            var best = null;
+            list.forEach(function (c) {
+                var d = Math.abs(c - r.startFrame);
+                if (best === null || d < Math.abs(best - r.startFrame)) best = c;
+            });
+            if (best !== r.startFrame && Math.abs(best - r.startFrame) <= maxDistance) plan.push({ record: r, toFrame: best });
+        });
+        return plan;
+    }
+
+    // ---------- fase 2 (parte B): duplicados e mesclar ----------
+    // Grupos: marcadores a até "tolerance" frames do PRIMEIRO do grupo (0 = mesmo frame).
+    function clusters(records, tolerance) {
+        tolerance = Number(tolerance);
+        if (!isInt(tolerance) || tolerance < 0) throw new Error("A distância precisa ser um número inteiro de 0 ou mais frames.");
+        var groups = [];
+        byFrame(records).forEach(function (r) {
+            var g = groups[groups.length - 1];
+            if (g && r.startFrame - g[0].startFrame <= tolerance) g.push(r);
+            else groups.push([r]);
+        });
+        return groups.filter(function (g) { return g.length > 1; });
+    }
+
+    // Fica o primeiro de cada grupo; os outros são excluídos.
+    function planDedupe(records, tolerance) {
+        var plan = [];
+        clusters(records, tolerance).forEach(function (g) {
+            g.slice(1).forEach(function (r) { plan.push({ record: r, remove: true }); });
+        });
+        return plan;
+    }
+
+    // Fica o primeiro de cada grupo, com os comentários de todos juntos (" | ", sem repetir) e,
+    // se ele não tiver nome, o primeiro nome que existir no grupo. Os outros são excluídos.
+    function planMerge(records, tolerance) {
+        var plan = [];
+        clusters(records, tolerance).forEach(function (g) {
+            var keep = g[0];
+            var texts = [];
+            g.forEach(function (r) {
+                var c = String(r.comments || "").trim();
+                if (c && texts.indexOf(c) < 0) texts.push(c);
+            });
+            var item = { record: keep };
+            var joined = texts.join(" | ");
+            if (joined !== keep.comments) item.comments = joined;
+            if (!keep.name) {
+                var named = g.filter(function (r) { return r.name; })[0];
+                if (named) item.name = named.name;
+            }
+            if (item.comments !== undefined || item.name !== undefined) plan.push(item);
+            g.slice(1).forEach(function (r) { plan.push({ record: r, remove: true }); });
+        });
+        return plan;
+    }
+
     return {
+        planDuration: planDuration,
+        planDistribute: planDistribute,
+        nearestOnGrid: nearestOnGrid,
+        gridStep: gridStep,
+        planQuantize: planQuantize,
+        planSnap: planSnap,
+        clusters: clusters,
+        planDedupe: planDedupe,
+        planMerge: planMerge,
         TYPES: TYPES,
         sameType: sameType,
         planColor: planColor,

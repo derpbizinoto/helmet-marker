@@ -22,6 +22,7 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 - Duplo clique no nome ou comentário da lista para editar ali mesmo.
 - Modelos de marcador (nome, cor, tipo, comentário): aplicar na seleção ou criar um marcador no playhead.
 - Seleções salvas com nome, por sequência.
+- Tempo: mesma duração para vários, distribuir igualmente, alinhar a uma grade (BPM digitado ou a cada X frames), encaixar no corte mais próximo, remover duplicados e mesclar próximos.
 - Atualiza a lista sozinho: ao trocar de sequência e com uma verificação leve a cada poucos segundos (o Premiere não avisa quando um marcador é criado na timeline).
 
 ## Requisitos

@@ -20,6 +20,10 @@
 //   sequence.getPlayerPosition / setPlayerPosition (25.6), sequence.getInPoint / getOutPoint (25.6)
 //   markers.createRemoveMarkerAction (25.6), marker.createSetNameAction / createSetCommentsAction /
 //   createSetTypeAction (25.6; tipos "Comment", "Chapter", "Segmentation", "WebLink")
+//   marker.createSetDurationAction(TickTime) (25.6)
+//   sequence.getVideoTrackCount / getVideoTrack / getAudioTrackCount / getAudioTrack (25.6, Promise)
+//   VideoTrack/AudioTrack.getTrackItems(Constants.TrackItemType, includeEmpty) (25.6, sem Promise)
+//   VideoClipTrackItem/AudioClipTrackItem.getStartTime / getEndTime (25.6, Promise<TickTime>)
 // Fora do Premiere (API UXP, conferida em developer.adobe.com/premiere-pro/uxp/uxp-api/):
 //   require("uxp").storage.localFileSystem.getFileForSaving(nome, { types }) -> File ou null;
 //   File.write(texto) (UTF-8); navigator.clipboard.writeText (UXP 6.0) / setContent.
@@ -177,11 +181,12 @@ var HMPremiere = (function () {
     }
 
     // Aplica um plano do core/plans.js inteiro numa única transação (um Ctrl+Z).
-    // Cada item: { record, color?, name?, comments?, type?, toFrame?, remove? }
+    // Cada item: { record, color?, name?, comments?, type?, toFrame?, durationFrames?, remove? }
     function applyPlan(ctx, plan, undoLabel) {
         if (!ctx.markersObj) throw new Error("Atualize a lista antes de alterar marcadores.");
         if (!plan.length) return false;
         var times = plan.map(function (p) { return typeof p.toFrame === "number" ? tickAtFrame(ctx, p.toFrame) : null; });
+        var durs = plan.map(function (p) { return typeof p.durationFrames === "number" ? tickAtFrame(ctx, p.durationFrames) : null; });
         runTransaction(ctx, undoLabel, function (add) {
             plan.forEach(function (p, i) {
                 var m = p.record.marker;
@@ -191,6 +196,7 @@ var HMPremiere = (function () {
                 if (typeof p.name === "string") add(m.createSetNameAction(p.name));
                 if (typeof p.comments === "string") add(m.createSetCommentsAction(p.comments));
                 if (typeof p.type === "string") add(m.createSetTypeAction(typeValue(p.type)));
+                if (durs[i]) add(m.createSetDurationAction(durs[i]));
             });
         });
         return true;
@@ -216,6 +222,40 @@ var HMPremiere = (function () {
             inFrame: T.frameFromTicks(tin.ticksNumber, ctx.ticksPerFrame).frame,
             outFrame: T.frameFromTicks(tout.ticksNumber, ctx.ticksPerFrame).frame
         };
+    }
+
+    // ---------- cortes da timeline ----------
+    // Frames de início e fim de todos os clipes das trilhas pedidas ("both", "video", "audio").
+    // Só lê (nada é alterado). TrackItemType.CLIP = 1 segundo a referência (VideoTrack).
+    async function getCutFrames(ctx, which) {
+        var a = ppro();
+        var C = a.Constants || {};
+        var clipType = C.TrackItemType && C.TrackItemType.CLIP !== undefined ? C.TrackItemType.CLIP : 1;
+        var tracks = [];
+        if (which !== "audio") {
+            var nv = await ctx.sequence.getVideoTrackCount();
+            for (var v = 0; v < nv; v++) tracks.push(await ctx.sequence.getVideoTrack(v));
+        }
+        if (which !== "video") {
+            var na = await ctx.sequence.getAudioTrackCount();
+            for (var k = 0; k < na; k++) tracks.push(await ctx.sequence.getAudioTrack(k));
+        }
+        var seen = {}, cuts = [];
+        function addTime(t) {
+            if (!t) return;
+            var f = T.frameFromTicks(t.ticksNumber, ctx.ticksPerFrame).frame;
+            if (!seen[f]) { seen[f] = true; cuts.push(f); }
+        }
+        for (var i = 0; i < tracks.length; i++) {
+            if (!tracks[i]) continue;
+            var items = (await val(tracks[i].getTrackItems(clipType, false))) || [];
+            for (var j = 0; j < items.length; j++) {
+                addTime(await items[j].getStartTime());
+                addTime(await items[j].getEndTime());
+            }
+        }
+        cuts.sort(function (x, y) { return x - y; });
+        return cuts;
     }
 
     // ---------- arquivo e área de transferência (API UXP) ----------
@@ -291,6 +331,7 @@ var HMPremiere = (function () {
         getPlayheadFrame: getPlayheadFrame,
         setPlayheadFrame: setPlayheadFrame,
         getInOut: getInOut,
+        getCutFrames: getCutFrames,
         saveTextFile: saveTextFile,
         copyText: copyText,
         listen: listen

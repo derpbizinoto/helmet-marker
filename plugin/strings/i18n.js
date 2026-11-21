@@ -235,6 +235,75 @@ var HMI18n = (function () {
         "O marcador não está mais na lista. Nada foi alterado.": "The marker is no longer in the list. Nothing was changed.",
         "Não consegui guardar no painel.": "Couldn't save it in the panel.",
 
+        // --- fase 2 (parte B): duração, distribuir, grade, cortes, limpeza ----------------
+        "Tempo e limpeza": "Timing and cleanup",
+        "Vale para os marcadores selecionados. Cada botão é uma operação só: um Ctrl+Z desfaz.":
+            "Applies to the selected markers. Each button is a single operation: one Ctrl+Z undoes it.",
+        "segundos": "seconds",
+        "Aplicar duração": "Apply duration",
+        "Tornar pontuais": "Make point markers",
+        "Distribuir": "Distribute",
+        "Distribuir igualmente": "Distribute evenly",
+        "O primeiro e o último ficam onde estão; os do meio ficam com o mesmo espaço entre eles.":
+            "The first and last stay where they are; the ones in between get equal spacing.",
+        "Alinhar a uma grade": "Snap to a grid",
+        "A cada X frames": "Every X frames",
+        "Cada batida": "Every beat",
+        "Meia batida": "Half beat",
+        "1/4 de batida": "1/4 beat",
+        "A cada 2 batidas": "Every 2 beats",
+        "A cada 4 batidas (compasso)": "Every 4 beats (bar)",
+        "a partir": "starting",
+        "do início da sequência": "from the sequence start",
+        "do playhead": "from the playhead",
+        "Alinhar": "Snap",
+        "Encaixar no corte mais próximo": "Snap to the nearest cut",
+        "Clipes de vídeo e áudio": "Video and audio clips",
+        "Só clipes de vídeo": "Video clips only",
+        "Só clipes de áudio": "Audio clips only",
+        "até": "up to",
+        "frames de distância": "frames away",
+        "Encaixar": "Snap to cut",
+        "Corte = começo ou fim de um clipe na timeline. Marcadores longe demais de um corte ficam onde estão.":
+            "Cut = start or end of a clip in the timeline. Markers too far from a cut stay where they are.",
+        "Duplicados e próximos": "Duplicates and nearby markers",
+        "Distância": "Distance",
+        "frames (0 = mesmo frame)": "frames (0 = same frame)",
+        "Remover duplicados": "Remove duplicates",
+        "Mesclar próximos": "Merge nearby",
+        "Remover: fica o primeiro de cada grupo. Mesclar: fica o primeiro, com os comentários de todos juntos.":
+            "Remove: the first of each group stays. Merge: the first stays, with everyone's comments combined.",
+        "A duração precisa ser um número inteiro de 0 ou mais.": "The duration must be a whole number, 0 or more.",
+        "Helmet Marker: mudar duração": "Helmet Marker: change duration",
+        "Duração alterada em {0} marcador(es). Um Ctrl+Z desfaz.": "Duration changed on {0} marker(s). One Ctrl+Z undoes it.",
+        "Helmet Marker: tornar pontuais": "Helmet Marker: make point markers",
+        "Marcadores que viraram pontuais: {0}. Um Ctrl+Z desfaz.": "Markers made point markers: {0}. One Ctrl+Z undoes it.",
+        "Helmet Marker: distribuir marcadores": "Helmet Marker: distribute markers",
+        "Marcadores distribuídos: {0} movidos. Um Ctrl+Z desfaz.": "Markers distributed: {0} moved. One Ctrl+Z undoes it.",
+        "Helmet Marker: alinhar à grade": "Helmet Marker: snap to grid",
+        "Marcadores alinhados à grade: {0}. Um Ctrl+Z desfaz.": "Markers snapped to the grid: {0}. One Ctrl+Z undoes it.",
+        "Vai alinhar {0} marcador(es) (os que já estiverem na grade não mudam).": "Will snap {0} marker(s) (those already on the grid won't change).",
+        "Helmet Marker: encaixar no corte": "Helmet Marker: snap to cut",
+        "Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz.": "Markers snapped to a cut: {0}. One Ctrl+Z undoes it.",
+        "Os cortes são lidos ao clicar.": "Cuts are read when you click.",
+        "Nenhum duplicado ou marcador próximo nessa distância.": "No duplicates or nearby markers at this distance.",
+        "Grupos encontrados: vai excluir {0} marcador(es).": "Groups found: will delete {0} marker(s).",
+        "Helmet Marker: mesclar marcadores": "Helmet Marker: merge markers",
+        "Helmet Marker: remover duplicados": "Helmet Marker: remove duplicates",
+        "Mesclagem feita: {0} alteração(ões). Um Ctrl+Z desfaz.": "Merge done: {0} change(s). One Ctrl+Z undoes it.",
+        "Duplicados removidos: {0}. Um Ctrl+Z desfaz.": "Duplicates removed: {0}. One Ctrl+Z undoes it.",
+        "Mesclar e excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.": "Merge and delete {0} marker(s)? You can undo with Ctrl+Z.",
+        "Excluir {0} marcador(es) duplicado(s)? Dá para desfazer com Ctrl+Z.": "Delete {0} duplicate marker(s)? You can undo with Ctrl+Z.",
+        "Selecione pelo menos 3 marcadores.": "Select at least 3 markers.",
+        "O intervalo da grade precisa ser um número inteiro de frames (1 ou mais).": "The grid interval must be a whole number of frames (1 or more).",
+        "O BPM precisa ser um número maior que 0 (até 999).": "BPM must be a number greater than 0 (up to 999).",
+        "Divisão da batida inválida.": "Invalid beat division.",
+        "Escolha o tipo de grade.": "Choose the grid type.",
+        "Início da grade inválido.": "Invalid grid start.",
+        "A distância máxima precisa ser um número inteiro de frames (1 ou mais).": "The maximum distance must be a whole number of frames (1 or more).",
+        "Não há clipes nas trilhas escolhidas.": "There are no clips on the chosen tracks.",
+        "A distância precisa ser um número inteiro de 0 ou mais frames.": "The distance must be a whole number of frames, 0 or more.",
+
         // --- cores e tipos ----------------------------------------------------------------
         "Verde": "Green",
         "Vermelho": "Red",
@@ -277,7 +346,7 @@ var HMI18n = (function () {
     };
 
     // Iguais nas duas línguas (os testes não cobram tradução para estes).
-    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames"];
+    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "BPM"];
 
     var hasOwn = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
 
