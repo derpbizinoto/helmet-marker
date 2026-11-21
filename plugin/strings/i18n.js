@@ -158,7 +158,6 @@ var HMI18n = (function () {
         "Marcadores fora do frame exato: {0}": "Markers off an exact frame: {0}",
 
         // --- fase 2: seleções salvas, localizar/numerar, modelos, edição na lista ---------
-        "Salvas": "Saved",
         "Selecionar": "Select",
         "Apagar": "Delete",
         "Nenhuma seleção salva": "No saved selections",
@@ -314,6 +313,9 @@ var HMI18n = (function () {
         "A quantidade precisa ser um número inteiro entre 1 e 5000.": "The count must be a whole number between 1 and 5000.",
         "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
         // fase 3 (parte B)
+        "Filtros": "Filters",
+        "Seleção": "Selection",
+        "Seleções salvas": "Saved selections",
         "Levar ao playhead": "Move to playhead",
         "O primeiro vai ao playhead; os outros acompanham.": "The first one goes to the playhead; the others follow.",
         "Vai levar {0} marcador(es) ao playhead.": "Will move {0} marker(s) to the playhead.",

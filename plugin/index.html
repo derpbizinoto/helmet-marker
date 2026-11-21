@@ -32,8 +32,11 @@
                 <div role="button" id="btnRefresh" class="btn btn-secondary btn-sm">Atualizar</div>
             </div>
 
+            <div class="group-label">Filtros</div>
             <div class="row-tools">
-                <input id="filterText" class="input grow" type="text" placeholder="Buscar" />
+                <input id="filterText" class="input full" type="text" placeholder="Buscar" />
+            </div>
+            <div class="row-tools">
                 <select id="filterType" class="input">
                     <option value="any">Todos os tipos</option>
                     <option value="Comment">Comentário</option>
@@ -46,19 +49,20 @@
                     <option value="point">Pontuais</option>
                     <option value="ranged">Com duração</option>
                 </select>
-            </div>
-            <div class="row-tools">
-                <div class="chips" id="colorChips"></div>
                 <div role="button" id="chipInOut" class="chip" title="Mostra só os marcadores entre o In e o Out da sequência">Entre In e Out</div>
                 <div role="button" id="btnClearFilters" class="btn btn-ghost btn-sm">Limpar</div>
             </div>
-
             <div class="row-tools">
-                <span class="field-label">Selecionar</span>
+                <div class="chips" id="colorChips"></div>
+            </div>
+
+            <div class="group-label">Seleção</div>
+            <div class="row-tools">
                 <div role="button" id="btnSelAll" class="btn btn-secondary btn-sm">Tudo</div>
                 <div role="button" id="btnSelNone" class="btn btn-secondary btn-sm">Nenhum</div>
                 <div role="button" id="btnSelInvert" class="btn btn-secondary btn-sm">Inverter</div>
-                <span class="sep"></span>
+            </div>
+            <div class="row-tools">
                 <div role="button" id="btnSelBefore" class="btn btn-secondary btn-sm">Antes</div>
                 <div role="button" id="btnSelAfter" class="btn btn-secondary btn-sm">Depois</div>
                 <select id="relRef" class="input">
@@ -67,16 +71,18 @@
                 </select>
             </div>
 
+            <div class="group-label">Seleções salvas</div>
             <div class="row-tools">
-                <span class="field-label">Salvas</span>
-                <select id="savedSel" class="input"></select>
+                <select id="savedSel" class="input wide"></select>
                 <div role="button" id="btnSavedLoad" class="btn btn-secondary btn-sm">Selecionar</div>
                 <div role="button" id="btnSavedDelete" class="btn btn-ghost btn-sm">Apagar</div>
-                <span class="sep"></span>
-                <input id="savedName" class="input" type="text" placeholder="Nome" />
+            </div>
+            <div class="row-tools">
+                <input id="savedName" class="input wide" type="text" placeholder="Nome" />
                 <div role="button" id="btnSavedSave" class="btn btn-secondary btn-sm">Salvar</div>
             </div>
 
+            <div class="list-sep"></div>
             <div class="list-head">
                 <span class="c swatch"></span>
                 <span class="c tc">Timecode</span>

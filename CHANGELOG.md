@@ -4,7 +4,7 @@
 
 - Reúne tudo das versões 0.1 a 0.3 (abaixo), com o código inteiro revisado e testado no Premiere 26.5.
 - Instalação pelo pacote `.ccx` (dois cliques; o app Creative Cloud instala).
-- Interface mais limpa: textos e botões mais curtos, menos explicações repetidas, mais espaço entre os elementos; as prévias só aparecem com marcadores selecionados.
+- Interface mais limpa: textos e botões mais curtos, menos explicações repetidas, mais espaço entre os elementos, grupos separados por linhas e botões com contorno visível; as prévias só aparecem com marcadores selecionados.
 - Novo: **Levar ao playhead** (cartão Mover). O primeiro marcador selecionado vai para o playhead e os outros vão junto, com o mesmo espaço entre eles. Só funciona com marcadores seguidos (nenhum outro no meio, nem escondido pelos filtros). Um Ctrl+Z desfaz.
 
 ## 0.3.0 — produtividade e importação (fases 2 e 3)
