@@ -436,7 +436,7 @@ test("seleção salva: acha o que está na lista e conta o que sumiu", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Fase 2 (parte B): duração, distribuir, grade, cortes, duplicados
+// Fase 2 (parte B): duração, distribuir, cortes, duplicados
 // ---------------------------------------------------------------------------
 
 test("duração: mesma para todos, 0 = pontual, recusa fração e negativo", () => {
@@ -455,32 +455,6 @@ test("distribuir: primeiro e último ficam, meio igualmente espaçado em frames 
     assert.deepStrictEqual(to, { b: 33, c: 67 });
     assert.ok(p.every((x) => Number.isInteger(x.toFrame)));
     assert.throws(() => PL.planDistribute(r.slice(0, 2)), /pelo menos 3/);
-});
-test("grade em frames: vai para a linha mais próxima a partir do início escolhido", () => {
-    const r = [rec("a", 7), rec("b", 14), rec("c", 30), rec("d", 46)];
-    const p = PL.planQuantize(r, { mode: "frames", value: 10, originFrame: 0 });
-    const to = {};
-    p.forEach((x) => { to[x.record.key] = x.toFrame; });
-    assert.deepStrictEqual(to, { a: 10, b: 10, d: 50 });
-    const q = PL.planQuantize([rec("a", 7)], { mode: "frames", value: 10, originFrame: 3 });
-    assert.strictEqual(q[0].toFrame, 3);
-    assert.throws(() => PL.planQuantize(r, { mode: "frames", value: 0 }), /intervalo da grade/);
-});
-test("grade nunca leva marcador para antes do frame 0", () => {
-    const p = PL.planQuantize([rec("a", 0)], { mode: "frames", value: 30, originFrame: 20 });
-    assert.strictEqual(p[0].toFrame, 20);
-});
-test("grade por BPM usa o fps real e arredonda para frame inteiro", () => {
-    const i25 = T.rateInfo(25), i2997 = T.rateInfo(30000 / 1001);
-    assert.strictEqual(PL.gridStep({ mode: "bpm", value: 120, beats: 1 }, i25), 12.5);
-    assert.strictEqual(PL.gridStep({ mode: "bpm", value: 120, beats: 4 }, i25), 50);
-    // 120 BPM a 29,97: 14,985 frames por batida; batida 100 = 1498,5 -> 1499 (não 1500)
-    assert.strictEqual(PL.nearestOnGrid(1497, 0, PL.gridStep({ mode: "bpm", value: 120 }, i2997)), 1499);
-    const p = PL.planQuantize([rec("a", 13), rec("b", 24)], { mode: "bpm", value: 120, beats: 1, originFrame: 0 }, i25);
-    // 13 já está na batida 1 (12,5 arredonda para 13): não muda; 24 vai para a batida 2 (25)
-    assert.deepStrictEqual(p.map((x) => x.record.key + "=" + x.toFrame), ["b=25"]);
-    assert.ok(p.every((x) => Number.isInteger(x.toFrame)));
-    assert.throws(() => PL.gridStep({ mode: "bpm", value: 0 }, i25), /BPM/);
 });
 test("encaixar no corte: corte mais próximo dentro da distância; empate vai para o anterior", () => {
     const r = [rec("a", 12), rec("b", 50), rec("c", 100), rec("d", 15)];

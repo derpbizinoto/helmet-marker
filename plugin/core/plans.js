@@ -206,40 +206,6 @@
         return plan;
     }
 
-    // ---------- fase 2 (parte B): grade ----------
-    // Grade a partir de originFrame, com passo stepFrames (pode ser fracionário no caso do BPM).
-    // Cada marcador vai para a linha da grade mais próxima, arredondada para um frame inteiro.
-    function nearestOnGrid(frame, originFrame, stepFrames) {
-        var k = Math.round((frame - originFrame) / stepFrames);
-        var to = Math.round(originFrame + k * stepFrames);
-        while (to < 0) { k++; to = Math.round(originFrame + k * stepFrames); }
-        return to;
-    }
-
-    function gridStep(opts, info) {
-        if (opts.mode === "frames") {
-            var f = Number(opts.value);
-            if (!isInt(f) || f < 1) throw new Error("O intervalo da grade precisa ser um número inteiro de frames (1 ou mais).");
-            return f;
-        }
-        if (opts.mode === "bpm") {
-            var bpm = Number(opts.value), beats = Number(opts.beats || 1);
-            if (!isFinite(bpm) || bpm <= 0 || bpm > 999) throw new Error("O BPM precisa ser um número maior que 0 (até 999).");
-            if (!isFinite(beats) || beats <= 0) throw new Error("Divisão da batida inválida.");
-            if (!info || !info.fps) throw new Error("Sem informações da taxa de quadros.");
-            return info.fps * 60 / bpm * beats;    // frames por linha da grade (fps real: 29,97 etc.)
-        }
-        throw new Error("Escolha o tipo de grade.");
-    }
-
-    function planQuantize(records, opts, info) {
-        var step = gridStep(opts, info);
-        var origin = Number(opts.originFrame || 0);
-        if (!isInt(origin) || origin < 0) throw new Error("Início da grade inválido.");
-        return records.map(function (r) { return { record: r, toFrame: nearestOnGrid(r.startFrame, origin, step) }; })
-            .filter(function (p) { return p.toFrame !== p.record.startFrame; });
-    }
-
     // ---------- fase 2 (parte B): encaixar no corte ----------
     // cuts: frames de início/fim dos clipes. Só encaixa se o corte estiver a até maxDistance frames.
     // Empate: o corte anterior.
@@ -310,9 +276,6 @@
     return {
         planDuration: planDuration,
         planDistribute: planDistribute,
-        nearestOnGrid: nearestOnGrid,
-        gridStep: gridStep,
-        planQuantize: planQuantize,
         planSnap: planSnap,
         clusters: clusters,
         planDedupe: planDedupe,

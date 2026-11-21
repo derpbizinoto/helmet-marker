@@ -48,7 +48,8 @@
         savedSels: [],
         savedSeqId: null,
         scrollSpeed: 3,
-        wheelSeen: false
+        wheelSeen: false,
+        scrollSeen: false
     };
 
     // ---------- coisas guardadas no painel (localStorage do UXP) ----------
@@ -273,7 +274,9 @@
             frag.appendChild(row);
         });
         list.appendChild(frag);
+        amp.quietUntil.list = Date.now() + 150;   // recriar a lista não é rolagem do usuário
         list.scrollTop = scroll;
+        amp.last.list = list.scrollTop;
 
         renderSelectionInfo();
         renderDiagnostics();
@@ -478,6 +481,7 @@
             lines.push(tr("Marcadores fora do frame exato: {0}", state.records.filter(function (r) { return !r.onFrame; }).length));
         }
         lines.push(tr("Roda do mouse no painel: {0}", state.wheelSeen ? tr("recebida") : tr("ainda não recebida")));
+        lines.push(tr("Aviso de rolagem no painel: {0}", state.scrollSeen ? tr("recebido") : tr("ainda não recebido")));
         var box = $("diag");
         clear(box);
         lines.forEach(function (l) {
@@ -514,7 +518,7 @@
         setEnabled("btnSavedDelete", !!saved);
         setEnabled("btnSavedSave", ready && n);
         $("chipMatchCase").className = "chip" + (state.matchCase ? " on" : "");
-        ["btnDuration", "btnPoint", "btnGrid", "btnSnap", "btnDedupe", "btnMerge"].forEach(function (id) { setEnabled(id, ready && n); });
+        ["btnDuration", "btnPoint", "btnSnap", "btnDedupe", "btnMerge"].forEach(function (id) { setEnabled(id, ready && n); });
         setEnabled("btnDistribute", ready && n >= 3);
         $("chipInOut").className = "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled");
         $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
@@ -612,7 +616,7 @@
         if (run && fn) fn();
     }
 
-    // ---------- fase 2 (parte B): duração, distribuir, grade, cortes, limpeza ----------
+    // ---------- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------
     function durationFrames() {
         var v = Number($("durValue").value);
         if (!isFinite(v) || Math.round(v) !== v || v < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
@@ -631,18 +635,6 @@
     function onDistribute() {
         runEdit(function () { return PL.planDistribute(needSelection()); },
             tr("Helmet Marker: distribuir marcadores"), N("Marcadores distribuídos: {0} movidos. Um Ctrl+Z desfaz."));
-    }
-
-    function gridOptions(originFrame) {
-        return { mode: $("gridMode").value, value: Number($("gridValue").value), beats: Number($("gridBeats").value), originFrame: originFrame };
-    }
-
-    function onGrid() {
-        runEdit(async function () {
-            var sel = needSelection();
-            var origin = $("gridOrigin").value === "playhead" ? await P.getPlayheadFrame(state.ctx) : 0;
-            return PL.planQuantize(sel, gridOptions(origin), state.ctx.info);
-        }, tr("Helmet Marker: alinhar à grade"), N("Marcadores alinhados à grade: {0}. Um Ctrl+Z desfaz."));
     }
 
     function onSnap() {
@@ -685,12 +677,6 @@
     function partBPreviews(sel, none, change) {
         $("pvDuration").textContent = sel.length ? previewText(function () { return PL.planDuration(sel, durationFrames()).length; }, change) : none;
         $("pvDistribute").textContent = sel.length ? previewText(function () { return PL.planDistribute(sel).length; }, change) : none;
-        // A grade a partir do playhead depende de onde ele está: a prévia usa o início da sequência
-        // só para validar os números.
-        $("pvGrid").textContent = !sel.length ? none : previewText(function () {
-            PL.gridStep(gridOptions(0), state.ctx.info);
-            return $("gridOrigin").value === "playhead" ? sel.length : PL.planQuantize(sel, gridOptions(0), state.ctx.info).length;
-        }, $("gridOrigin").value === "playhead" ? N("Vai alinhar {0} marcador(es) (os que já estiverem na grade não mudam).") : change);
         $("pvSnap").textContent = sel.length ? tr("Os cortes são lidos ao clicar.") : none;
         $("pvClean").textContent = !sel.length ? none : (function () {
             try {
@@ -700,7 +686,6 @@
                 return tr("Grupos encontrados: vai excluir {0} marcador(es).", d);
             } catch (e) { return errText(e); }
         })();
-        show($("gridBeats"), $("gridMode").value === "bpm");
     }
 
     function onTest() {
@@ -1131,6 +1116,8 @@
     }
 
     function onWheel(e) {
+        if (e.__hmDone) return;                       // o mesmo evento passa por mais de uma área
+        e.__hmDone = true;
         if (!state.wheelSeen) { state.wheelSeen = true; renderDiagnostics(); }
         if (state.scrollSpeed <= 1) return;           // "Normal": deixa o Premiere rolar
         var dy = Number(e.deltaY) || 0;
@@ -1144,6 +1131,44 @@
         if (!box) return;
         if (e.preventDefault) e.preventDefault();
         box.scrollTop = box.scrollTop + dy * state.scrollSpeed;
+    }
+
+    // Plano B (Premiere 26.5.2 não entrega "wheel"): quando a área rola sozinha um passo
+    // pequeno, o painel soma (N − 1) passos iguais na mesma direção. Com o botão do mouse
+    // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
+    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false };
+
+    function onScrollAmplify(e) {
+        var el = e.currentTarget || e.target;
+        if (!el || !el.id) return;
+        var id = el.id;
+        if (!state.scrollSeen) { state.scrollSeen = true; renderDiagnostics(); }
+        var cur = el.scrollTop, last = amp.last[id];
+        amp.last[id] = cur;
+        if (amp.own[id]) { amp.own[id] = false; return; }          // rolagem feita por nós
+        if (amp.quietUntil && amp.quietUntil[id] > Date.now()) return;   // lista sendo redesenhada
+        if (state.wheelSeen || state.scrollSpeed <= 1 || amp.mouseDown || last === undefined) return;
+        var d = cur - last;
+        if (!d || Math.abs(d) > 200) return;                          // salto grande: não é a roda
+        amp.own[id] = true;
+        el.scrollTop = cur + d * (state.scrollSpeed - 1);
+        if (el.scrollTop === cur) amp.own[id] = false;                // já estava no fim
+        amp.last[id] = el.scrollTop;
+    }
+
+    function setupScrolling() {
+        SCROLLERS.forEach(function (id) {
+            var el = $(id);
+            el.addEventListener("wheel", onWheel, { passive: false });
+            el.addEventListener("scroll", onScrollAmplify);
+            amp.last[id] = el.scrollTop;
+        });
+        ["mousedown", "pointerdown"].forEach(function (ev) {
+            document.addEventListener(ev, function () { amp.mouseDown = true; });
+        });
+        ["mouseup", "pointerup"].forEach(function (ev) {
+            document.addEventListener(ev, function () { amp.mouseDown = false; });
+        });
     }
 
     // ---------- início ----------
@@ -1171,7 +1196,7 @@
             state.scrollSpeed = Number($("scrollSpeed").value) || 1;
             try { window.localStorage.setItem(SCROLL_KEY, String(state.scrollSpeed)); } catch (e) { /* só nesta sessão */ }
         });
-        document.addEventListener("wheel", onWheel, { passive: false });
+        setupScrolling();
 
         var lang = $("langSelect");
         lang.value = HMI18n.lang();
@@ -1258,14 +1283,13 @@
         on("btnDuration", "click", onDuration);
         on("btnPoint", "click", onPoint);
         on("btnDistribute", "click", onDistribute);
-        on("btnGrid", "click", onGrid);
         on("btnSnap", "click", onSnap);
         on("btnDedupe", "click", function () { onClean("dedupe"); });
         on("btnMerge", "click", function () { onClean("merge"); });
         on("btnCleanYes", "click", function () { closeConfirm(true); });
         on("btnCleanNo", "click", function () { closeConfirm(false); });
-        ["durValue", "gridValue", "snapMax", "cleanTol"].forEach(function (id) { on(id, "input", renderPreviews); });
-        ["durUnit", "gridMode", "gridBeats", "gridOrigin", "snapTracks"].forEach(function (id) { on(id, "change", renderPreviews); });
+        ["durValue", "snapMax", "cleanTol"].forEach(function (id) { on(id, "input", renderPreviews); });
+        ["durUnit", "snapTracks"].forEach(function (id) { on(id, "change", renderPreviews); });
 
         window.addEventListener("error", function (e) { showError(e.error || e.message); });
         window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });

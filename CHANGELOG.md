@@ -4,7 +4,6 @@
 
 - Duração: mesma duração para vários marcadores (em segundos ou frames) e tornar pontuais.
 - Distribuir igualmente entre o primeiro e o último selecionado.
-- Alinhar a uma grade: BPM digitado (batida, meia, 1/4, 2 ou 4 batidas) ou a cada X frames, a partir do início da sequência ou do playhead.
 - Encaixar no corte mais próximo (começo/fim dos clipes de vídeo e/ou áudio), até uma distância máxima.
 - Remover duplicados e mesclar marcadores próximos juntando os comentários (com confirmação).
 - Rolagem mais rápida com a roda do mouse (velocidade ajustável em Ferramentas de teste › Painel).

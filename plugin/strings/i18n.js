@@ -235,7 +235,7 @@ var HMI18n = (function () {
         "O marcador não está mais na lista. Nada foi alterado.": "The marker is no longer in the list. Nothing was changed.",
         "Não consegui guardar no painel.": "Couldn't save it in the panel.",
 
-        // --- fase 2 (parte B): duração, distribuir, grade, cortes, limpeza ----------------
+        // --- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------------
         "Tempo e limpeza": "Timing and cleanup",
         "Vale para os marcadores selecionados. Cada botão é uma operação só: um Ctrl+Z desfaz.":
             "Applies to the selected markers. Each button is a single operation: one Ctrl+Z undoes it.",
@@ -246,17 +246,6 @@ var HMI18n = (function () {
         "Distribuir igualmente": "Distribute evenly",
         "O primeiro e o último ficam onde estão; os do meio ficam com o mesmo espaço entre eles.":
             "The first and last stay where they are; the ones in between get equal spacing.",
-        "Alinhar a uma grade": "Snap to a grid",
-        "A cada X frames": "Every X frames",
-        "Cada batida": "Every beat",
-        "Meia batida": "Half beat",
-        "1/4 de batida": "1/4 beat",
-        "A cada 2 batidas": "Every 2 beats",
-        "A cada 4 batidas (compasso)": "Every 4 beats (bar)",
-        "a partir": "starting",
-        "do início da sequência": "from the sequence start",
-        "do playhead": "from the playhead",
-        "Alinhar": "Snap",
         "Encaixar no corte mais próximo": "Snap to the nearest cut",
         "Clipes de vídeo e áudio": "Video and audio clips",
         "Só clipes de vídeo": "Video clips only",
@@ -280,9 +269,6 @@ var HMI18n = (function () {
         "Marcadores que viraram pontuais: {0}. Um Ctrl+Z desfaz.": "Markers made point markers: {0}. One Ctrl+Z undoes it.",
         "Helmet Marker: distribuir marcadores": "Helmet Marker: distribute markers",
         "Marcadores distribuídos: {0} movidos. Um Ctrl+Z desfaz.": "Markers distributed: {0} moved. One Ctrl+Z undoes it.",
-        "Helmet Marker: alinhar à grade": "Helmet Marker: snap to grid",
-        "Marcadores alinhados à grade: {0}. Um Ctrl+Z desfaz.": "Markers snapped to the grid: {0}. One Ctrl+Z undoes it.",
-        "Vai alinhar {0} marcador(es) (os que já estiverem na grade não mudam).": "Will snap {0} marker(s) (those already on the grid won't change).",
         "Helmet Marker: encaixar no corte": "Helmet Marker: snap to cut",
         "Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz.": "Markers snapped to a cut: {0}. One Ctrl+Z undoes it.",
         "Os cortes são lidos ao clicar.": "Cuts are read when you click.",
@@ -295,11 +281,6 @@ var HMI18n = (function () {
         "Mesclar e excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.": "Merge and delete {0} marker(s)? You can undo with Ctrl+Z.",
         "Excluir {0} marcador(es) duplicado(s)? Dá para desfazer com Ctrl+Z.": "Delete {0} duplicate marker(s)? You can undo with Ctrl+Z.",
         "Selecione pelo menos 3 marcadores.": "Select at least 3 markers.",
-        "O intervalo da grade precisa ser um número inteiro de frames (1 ou mais).": "The grid interval must be a whole number of frames (1 or more).",
-        "O BPM precisa ser um número maior que 0 (até 999).": "BPM must be a number greater than 0 (up to 999).",
-        "Divisão da batida inválida.": "Invalid beat division.",
-        "Escolha o tipo de grade.": "Choose the grid type.",
-        "Início da grade inválido.": "Invalid grid start.",
         "A distância máxima precisa ser um número inteiro de frames (1 ou mais).": "The maximum distance must be a whole number of frames (1 or more).",
         "Não há clipes nas trilhas escolhidas.": "There are no clips on the chosen tracks.",
         "A distância precisa ser um número inteiro de 0 ou mais frames.": "The distance must be a whole number of frames, 0 or more.",
@@ -310,6 +291,9 @@ var HMI18n = (function () {
         "Roda do mouse no painel: {0}": "Mouse wheel in the panel: {0}",
         "recebida": "received",
         "ainda não recebida": "not received yet",
+        "Aviso de rolagem no painel: {0}": "Scroll notice in the panel: {0}",
+        "recebido": "received",
+        "ainda não recebido": "not received yet",
 
         // --- cores e tipos ----------------------------------------------------------------
         "Verde": "Green",
@@ -353,7 +337,7 @@ var HMI18n = (function () {
     };
 
     // Iguais nas duas línguas (os testes não cobram tradução para estes).
-    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "BPM", "2x", "3x", "4x", "6x"];
+    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "2x", "3x", "4x", "6x"];
 
     var hasOwn = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
 

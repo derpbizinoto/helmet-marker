@@ -22,7 +22,7 @@ Free and open source ([MIT license](LICENSE)).
 - Double-click a name or comment in the list to edit it right there.
 - Marker templates (name, color, type, comment): apply to the selection or create a marker at the playhead.
 - Saved selections with a name, per sequence.
-- Timing: same duration for many markers, distribute evenly, snap to a grid (typed BPM or every X frames), snap to the nearest clip cut, remove duplicates and merge nearby markers.
+- Timing: same duration for many markers, distribute evenly, snap to the nearest clip cut, remove duplicates and merge nearby markers.
 - Keeps the list up to date: when the sequence changes and with a light check every few seconds (Premiere does not notify when a marker is added in the timeline).
 
 ## Requirements
