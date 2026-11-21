@@ -310,6 +310,57 @@
             <div class="hint">Remover: fica o primeiro de cada grupo. Mesclar: fica o primeiro, com os comentários de todos juntos.</div>
         </section>
 
+        <!-- ================= importar e gerar ================= -->
+        <section class="card">
+            <div class="card-title">Importar e gerar</div>
+            <div class="hint top">Cria marcadores a partir de um arquivo (CSV, SRT, EDL, JSON ou TXT) ou de uma lista colada aqui. Tudo entra de uma vez: um Ctrl+Z desfaz.</div>
+            <div class="edit-row">
+                <div role="button" id="btnImpOpen" class="btn btn-secondary btn-sm">Abrir arquivo…</div>
+                <div role="button" id="btnImpClear" class="btn btn-ghost btn-sm">Limpar</div>
+                <span class="preview" id="impFile"></span>
+            </div>
+            <textarea id="impText" class="input textarea" placeholder="Cole aqui, um por linha. Ex.: 1:05 Entrevista | revisar áudio"></textarea>
+            <div class="edit-row">
+                <span class="field-label">Formato</span>
+                <select id="impFormat" class="input">
+                    <option value="auto">Automático</option>
+                    <option value="list">Lista de tempos</option>
+                    <option value="csv">CSV / planilha</option>
+                    <option value="srt">Legenda SRT</option>
+                    <option value="edl">EDL</option>
+                    <option value="json">JSON do Helmet Marker</option>
+                </select>
+                <span class="field-label">Tempos</span>
+                <select id="impBase" class="input">
+                    <option value="auto">Automático</option>
+                    <option value="timeline">Timecode da timeline</option>
+                    <option value="start">Contados do início (00:00)</option>
+                </select>
+            </div>
+            <div class="edit-row">
+                <div role="button" id="chipImpSkip" class="chip on">Pular os que já existem</div>
+                <div role="button" id="btnImport" class="btn btn-primary btn-sm">Importar</div>
+                <span class="preview" id="pvImport"></span>
+            </div>
+            <div class="warnings" id="impWarnings"></div>
+            <div class="text-preview" id="impPreview"></div>
+            <div class="hint">Automático: timecode com frames (01:00:05:12) é lido como o da timeline; relógio (1:05) e legendas contam do início da sequência.</div>
+
+            <div class="group-label">Marcador em cada corte</div>
+            <div class="edit-row">
+                <select id="cutTracks" class="input">
+                    <option value="video">Só clipes de vídeo</option>
+                    <option value="audio">Só clipes de áudio</option>
+                    <option value="both">Clipes de vídeo e áudio</option>
+                </select>
+                <span class="field-label">Nome</span>
+                <input id="cutPrefix" class="input" type="text" placeholder="Corte" />
+                <div role="button" id="btnCutMarkers" class="btn btn-primary btn-sm">Criar nos cortes</div>
+                <span class="preview" id="pvCut"></span>
+            </div>
+            <div class="hint">Um marcador no começo de cada clipe, numerado (Corte 01, Corte 02…). Pula o fim da sequência e os cortes que já têm marcador.</div>
+        </section>
+
         <!-- ================= exportar ================= -->
         <section class="card">
             <div class="card-title">Exportar</div>
@@ -334,6 +385,18 @@
                 <div role="button" id="btnCsvSave" class="btn btn-primary btn-sm">Salvar .csv</div>
                 <div role="button" id="btnCsvCopy" class="btn btn-secondary btn-sm">Copiar</div>
             </div>
+
+            <div class="group-label">Outros formatos</div>
+            <div class="edit-row">
+                <select id="otherFormat" class="input">
+                    <option value="review">Lista de revisão (.txt)</option>
+                    <option value="txt">Texto simples (.txt)</option>
+                    <option value="json">JSON (.json, volta pelo Importar)</option>
+                </select>
+                <div role="button" id="btnOtherSave" class="btn btn-primary btn-sm">Salvar</div>
+                <div role="button" id="btnOtherCopy" class="btn btn-secondary btn-sm">Copiar</div>
+            </div>
+            <div class="hint">Lista de revisão: "1. 01:00:05:12 — comentário", pronta para mandar ao cliente ou à equipe.</div>
         </section>
 
         <!-- ================= testes e diagnóstico ================= -->
@@ -373,6 +436,7 @@
     <script src="core/selection.js"></script>
     <script src="core/plans.js"></script>
     <script src="core/export.js"></script>
+    <script src="core/importers.js"></script>
     <script src="core/library.js"></script>
     <script src="premiere/ppro.js"></script>
     <script src="ui/panel.js"></script>

@@ -54,8 +54,9 @@ body {
     margin: 0;
     overflow: hidden;
     padding: 0;
-    background: var(--window-bg);
-    background-color: var(--bg-primary);
+    /* cor sólida no meio do degradê --window-bg: o UXP redesenha degradês grandes a cada
+       passo da rolagem, o que pesa (fase 3, lag) */
+    background-color: #120C1A;
     color: var(--text-primary);
     font-family: var(--font-ui);
     font-size: 13px;
@@ -99,7 +100,7 @@ h1 {
 .app-header, .status { flex-shrink: 0; }
 
 .card {
-    background: var(--card-fill);
+    background-color: #1B1325;   /* meio do degradê --card-fill, pelo mesmo motivo */
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     padding: var(--space-3);
@@ -276,6 +277,18 @@ h1 {
     font-size: 11px;
     white-space: pre-wrap;
     color: var(--text-primary);
+}
+
+/* ================= fase 3 ================= */
+.textarea {
+    display: block;
+    width: 100%;
+    height: 90px;
+    margin-top: var(--space-2);
+    padding: var(--space-2);
+    box-sizing: border-box;
+    font-family: var(--font-mono);
+    font-size: 11px;
 }
 
 /* painel estreito: some a coluna Duração e o tipo encolhe (o resto continua legível) */

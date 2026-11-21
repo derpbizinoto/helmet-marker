@@ -23,6 +23,8 @@ Free and open source ([MIT license](LICENSE)).
 - Marker templates (name, color, type, comment): apply to the selection or create a marker at the playhead.
 - Saved selections with a name, per sequence.
 - Timing: same duration for many markers, distribute evenly, snap to the nearest clip cut, remove duplicates and merge nearby markers.
+- Import from a pasted list, CSV (including Premiere's own), SRT, EDL or JSON, with a preview; create a marker on every cut.
+- Export a review list, plain text and JSON too.
 - Keeps the list up to date: when the sequence changes and with a light check every few seconds (Premiere does not notify when a marker is added in the timeline).
 
 ## Requirements
@@ -75,7 +77,7 @@ They cover the part that doesn't depend on Premiere (`plugin\core\`): frame and 
 
 | Folder | Contents |
 |---|---|
-| `plugin/core/` | Pure logic (frames, timecode, filters, selection, change plans, export). No Premiere calls; tested with Node. |
+| `plugin/core/` | Pure logic (frames, timecode, filters, selection, change plans, import and export). No Premiere calls; tested with Node. |
 | `plugin/premiere/` | Thin layer that reads markers and applies changes in a single transaction. |
 | `plugin/ui/` | The panel. |
 | `plugin/strings/` | All interface text (Portuguese and English). |

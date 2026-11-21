@@ -294,6 +294,7 @@ var HMI18n = (function () {
         "Aviso de rolagem no painel: {0}": "Scroll notice in the panel: {0}",
         "recebido": "received",
         "ainda não recebido": "not received yet",
+        "Última atualização da lista: {0} ms": "Last list update: {0} ms",
 
         // --- cores e tipos ----------------------------------------------------------------
         "Verde": "Green",
@@ -333,11 +334,63 @@ var HMI18n = (function () {
         "Mover {0} frames deixaria {1} marcador(es) antes do início da sequência. Nada foi alterado.":
             "Moving {0} frames would put {1} marker(s) before the start of the sequence. Nothing was changed.",
         "A quantidade precisa ser um número inteiro entre 1 e 5000.": "The count must be a whole number between 1 and 5000.",
-        "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more)."
+        "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
+        // fase 3 (parte A)
+        "Importar e gerar": "Import and generate",
+        "Cria marcadores a partir de um arquivo (CSV, SRT, EDL, JSON ou TXT) ou de uma lista colada aqui. Tudo entra de uma vez: um Ctrl+Z desfaz.": "Creates markers from a file (CSV, SRT, EDL, JSON or TXT) or from a list pasted here. Everything goes in at once: one Ctrl+Z undoes it.",
+        "Abrir arquivo…": "Open file…",
+        "Limpar": "Clear",
+        "Cole aqui, um por linha. Ex.: 1:05 Entrevista | revisar áudio": "Paste here, one per line. E.g.: 1:05 Interview | check audio",
+        "Formato": "Format",
+        "Automático": "Automatic",
+        "Lista de tempos": "List of times",
+        "CSV / planilha": "CSV / spreadsheet",
+        "Legenda SRT": "SRT subtitles",
+        "JSON do Helmet Marker": "Helmet Marker JSON",
+        "Tempos": "Times",
+        "Timecode da timeline": "Timeline timecode",
+        "Contados do início (00:00)": "Counted from the start (00:00)",
+        "Pular os que já existem": "Skip the ones that already exist",
+        "Importar": "Import",
+        "Automático: timecode com frames (01:00:05:12) é lido como o da timeline; relógio (1:05) e legendas contam do início da sequência.": "Automatic: timecode with frames (01:00:05:12) is read as the timeline's; clock times (1:05) and subtitles count from the start of the sequence.",
+        "Marcador em cada corte": "Marker on every cut",
+        "Criar nos cortes": "Create on cuts",
+        "Um marcador no começo de cada clipe, numerado (Corte 01, Corte 02…). Pula o fim da sequência e os cortes que já têm marcador.": "One marker at the start of each clip, numbered (Cut 01, Cut 02…). Skips the end of the sequence and the cuts that already have a marker.",
+        "Corte": "Cut",
+        "… e mais {0}.": "… and {0} more.",
+        "Vai criar {0} marcador(es).": "Will create {0} marker(s).",
+        "{0} já existe(m) e fica(m) de fora.": "{0} already exist(s) and will be left out.",
+        "Abertura cancelada.": "Open cancelled.",
+        "Arquivo aberto: {0}. Confira a prévia e clique em Importar.": "File opened: {0}. Check the preview and click Import.",
+        "Nada para importar: nenhum marcador novo reconhecido.": "Nothing to import: no new marker recognized.",
+        "Helmet Marker: importar marcadores": "Helmet Marker: import markers",
+        "Marcadores importados: {0}. Um Ctrl+Z desfaz.": "Markers imported: {0}. One Ctrl+Z undoes it.",
+        "Helmet Marker: cores dos importados": "Helmet Marker: colors of imported markers",
+        "Marcadores importados: {0}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.": "Markers imported: {0}. The colors went in as a second step: it takes two Ctrl+Z to undo everything.",
+        "Todos os cortes já têm marcador.": "Every cut already has a marker.",
+        "Helmet Marker: marcadores nos cortes": "Helmet Marker: markers on cuts",
+        "Marcadores criados nos cortes: {0}. Um Ctrl+Z desfaz.": "Markers created on cuts: {0}. One Ctrl+Z undoes it.",
+        "O CSV não tem coluna de tempo (Timecode, In, Frame ou Segundos).": "The CSV has no time column (Timecode, In, Frame or Seconds).",
+        "O JSON não pôde ser lido.": "The JSON could not be read.",
+        "O JSON não tem uma lista de marcadores.": "The JSON has no list of markers.",
+        "Nada para importar: abra um arquivo ou cole o texto.": "Nothing to import: open a file or paste the text.",
+        "Linhas sem tempo reconhecido (ignoradas): {0}.": "Lines without a recognized time (ignored): {0}.",
+        "Tempos antes do início da sequência (ignorados): {0}.": "Times before the start of the sequence (ignored): {0}.",
+        "Só os primeiros {0} marcadores serão importados.": "Only the first {0} markers will be imported.",
+        "A EDL não tem marcadores (LOC): foi criado um marcador por corte (evento).": "The EDL has no markers (LOC): one marker was created per cut (event).",
+        "Os tempos são anteriores ao início da sequência: foram lidos como contados do início (00:00).": "The times are earlier than the start of the sequence: they were read as counted from the start (00:00).",
+        "Outros formatos": "Other formats",
+        "Lista de revisão (.txt)": "Review list (.txt)",
+        "Texto simples (.txt)": "Plain text (.txt)",
+        "JSON (.json, volta pelo Importar)": "JSON (.json, comes back through Import)",
+        "Salvar": "Save",
+        "Lista de revisão: \"1. 01:00:05:12 — comentário\", pronta para mandar ao cliente ou à equipe.": "Review list: \"1. 01:00:05:12 — comment\", ready to send to the client or the team.",
+        "revisão": "review",
+        "Texto copiado.": "Text copied."
     };
 
     // Iguais nas duas línguas (os testes não cobram tradução para estes).
-    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "2x", "3x", "4x", "6x"];
+    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "2x", "3x", "4x", "6x", "EDL"];
 
     var hasOwn = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
 

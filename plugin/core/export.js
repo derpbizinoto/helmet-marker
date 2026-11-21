@@ -91,5 +91,52 @@
         return "﻿" + rows.join("\r\n") + "\r\n";
     }
 
-    return { youtubeChapters: youtubeChapters, csv: csv, realSeconds: realSeconds };
+    // ---------- fase 3: outros formatos ----------
+    var EOL = "\r\n";
+    function byStart(records) { return records.slice().sort(function (a, b) { return a.startFrame - b.startFrame; }); }
+    function oneLine(s) { return String(s == null ? "" : s).replace(/[\r\n]+/g, " ").trim(); }
+    function joinLines(list) { return list.length ? list.join(EOL) + EOL : ""; }
+
+    // TXT simples: timecode, nome e comentário separados por tabulação, um por linha.
+    function txt(records, opts) {
+        return joinLines(byStart(records).map(function (r) {
+            var parts = [T.framesToTimecode(r.startFrame, opts.info, opts.dropFrame, opts.startFrame), oneLine(r.name)];
+            if (oneLine(r.comments)) parts.push(oneLine(r.comments));
+            return parts.join("\t");
+        }));
+    }
+
+    // Lista de revisão (para mandar ao cliente / equipe): "1. 01:00:05:12 — comentário".
+    // Sem comentário, usa o nome.
+    function reviewList(records, opts) {
+        return joinLines(byStart(records).map(function (r, i) {
+            var text = oneLine(r.comments) || oneLine(r.name);
+            return (i + 1) + ". " + T.framesToTimecode(r.startFrame, opts.info, opts.dropFrame, opts.startFrame) + (text ? " — " + text : "");
+        }));
+    }
+
+    // JSON completo (o Helmet Marker importa de volta). opts.meta: dados da sequência.
+    function json(records, opts) {
+        var colorLabel = opts.colorLabel || function (i) { return String(i); };
+        var data = {
+            app: "Helmet Marker",
+            format: 1,
+            sequence: opts.meta || {},
+            markers: byStart(records).map(function (r) {
+                return {
+                    frame: r.startFrame,
+                    timecode: T.framesToTimecode(r.startFrame, opts.info, opts.dropFrame, opts.startFrame),
+                    name: String(r.name || ""),
+                    comments: String(r.comments || ""),
+                    colorIndex: r.colorIndex,
+                    color: colorLabel(r.colorIndex),
+                    type: String(r.type || ""),
+                    durationFrames: r.durationFrames || 0
+                };
+            })
+        };
+        return JSON.stringify(data, null, 2) + "\n";
+    }
+
+    return { youtubeChapters: youtubeChapters, csv: csv, realSeconds: realSeconds, txt: txt, reviewList: reviewList, json: json };
 });

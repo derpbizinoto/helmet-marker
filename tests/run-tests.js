@@ -536,7 +536,172 @@ test("signature muda quando qualquer campo muda", () => {
     assert.notStrictEqual(M.signature(RECS.slice(1)), base);
 });
 
-const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js", "core/library.js"];
+// ---------------------------------------------------------------------------
+// Fase 3 parte A: importar, outros formatos e marcador por corte
+// ---------------------------------------------------------------------------
+const IM = require(path.join(ROOT, "core", "importers.js"));
+const COLORS = M.buildColorTable({ GREEN: 0, RED: 1, MAGENTA: 2, ORANGE: 3, YELLOW: 4, WHITE: 5, BLUE: 6, CYAN: 7 });
+
+test("timecodeToFrames é o inverso de framesToTimecode (29,97 e 59,94, DF e NDF)", () => {
+    ["29.97", "59.94"].forEach((k) => {
+        const info = T.rateInfo(NTSC[k]);
+        [false, true].forEach((df) => {
+            for (let fr = 0; fr < info.nominal * 60 * 25; fr += 7) {
+                const tc = T.framesToTimecode(fr, info, df, 0);
+                assert.strictEqual(T.timecodeToFrames(tc, info), fr, k + " " + tc);
+            }
+        });
+    });
+});
+test("timecodeToFrames: 25 fps, inválidos e drop forçado", () => {
+    const i25 = T.rateInfo(25);
+    assert.strictEqual(T.timecodeToFrames("01:00:00:00", i25), 90000);
+    assert.strictEqual(T.timecodeToFrames("00:00:01:24", i25), 49);
+    assert.strictEqual(T.timecodeToFrames("00:00:01:25", i25), null);   // frame 25 não existe a 25 fps
+    assert.strictEqual(T.timecodeToFrames("00:61:00:00", i25), null);
+    assert.strictEqual(T.timecodeToFrames("1:05", i25), null);
+    const i30 = T.rateInfo(NTSC["29.97"]);
+    assert.strictEqual(T.timecodeToFrames("00:01:00;00", i30), null);   // número pulado em DF
+    assert.strictEqual(T.timecodeToFrames("00:01:00:02", i30, true), 1800);   // EDL com FCM: DROP FRAME
+    assert.strictEqual(T.timecodeToFrames("00:01:00:02", i30, false), 1802);
+});
+test("clockToSeconds", () => {
+    assert.strictEqual(T.clockToSeconds("1:05"), 65);
+    assert.strictEqual(T.clockToSeconds("01:02:03"), 3723);
+    assert.strictEqual(T.clockToSeconds("0:10.5"), 10.5);
+    assert.strictEqual(T.clockToSeconds("00:00:02,250"), 2.25);
+    assert.strictEqual(T.clockToSeconds("1:75"), null);
+    assert.strictEqual(T.clockToSeconds("abc"), null);
+});
+test("cores e tipos por nome (pt, en, Resolve, Avid)", () => {
+    assert.strictEqual(IM.colorIndexByName("Vermelho", COLORS), 1);
+    assert.strictEqual(IM.colorIndexByName("blue", COLORS), 6);
+    assert.strictEqual(IM.colorIndexByName("ResolveColorPink", COLORS), 2);
+    assert.strictEqual(IM.colorIndexByName("Cor 7", COLORS), 7);
+    assert.strictEqual(IM.colorIndexByName("", COLORS), null);
+    assert.strictEqual(IM.colorIndexByName("xadrez", COLORS), null);
+    assert.strictEqual(IM.typeByName("Capítulo"), "Chapter");
+    assert.strictEqual(IM.typeByName("Web Link"), "WebLink");
+    assert.strictEqual(IM.typeByName("qualquer"), "");
+});
+test("detectFormat por extensão e por conteúdo", () => {
+    assert.strictEqual(IM.detectFormat("", "a.SRT"), "srt");
+    assert.strictEqual(IM.detectFormat("{\"markers\":[]}"), "json");
+    assert.strictEqual(IM.detectFormat("1\n00:00:01,000 --> 00:00:02,000\nOi"), "srt");
+    assert.strictEqual(IM.detectFormat("TITLE: X\nFCM: NON-DROP FRAME\n"), "edl");
+    assert.strictEqual(IM.detectFormat("Timecode;Nome\n00:00:01:00;A"), "csv");
+    assert.strictEqual(IM.detectFormat("Marker Name\tDescription\tIn\tOut\tDuration\tMarker Type\n"), "csv");
+    assert.strictEqual(IM.detectFormat("0:00 Intro\n1:05 Parte 2"), "list");
+});
+test("importar lista colada: relógio, timecode, comentário e linhas ruins", () => {
+    const info = T.rateInfo(25);
+    const r = IM.parse("0:00 Intro\n1:05 - Parte 2 | revisar áudio\n01:00:10:05 Final\nsem tempo\n\n# nota", { info, startFrame: 90000, timeBase: "auto", colors: COLORS });
+    assert.strictEqual(r.format, "list");
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.name, i.comments]), [[0, "Intro", ""], [255, "Final", ""], [1625, "Parte 2", "revisar áudio"]]);
+    assert.strictEqual(r.warnings.length, 1);
+    const en = loadI18n("en");
+    r.warnings.forEach((w) => assert.notStrictEqual(en.trMsg(w), w, "sem tradução: " + w));
+});
+test("importar: base de tempo forçada e tempos antes do início", () => {
+    const info = T.rateInfo(25);
+    const a = IM.parse("00:00:04:00 A", { info, startFrame: 90000, timeBase: "start" });
+    assert.strictEqual(a.items[0].frame, 100);
+    const b = IM.parse("00:00:04:00 A", { info, startFrame: 90000, timeBase: "timeline" });
+    assert.strictEqual(b.items.length, 0);
+    assert.ok(/antes do início/.test(b.warnings[0]));
+    assert.notStrictEqual(loadI18n("en").trMsg(b.warnings[0]), b.warnings[0]);
+    // automático: tudo antes do início -> lê como contado do início, com aviso
+    const c = IM.parse("00:00:04:00 A\n00:00:08:00 B", { info, startFrame: 90000, timeBase: "auto" });
+    assert.deepStrictEqual(c.items.map((i) => i.frame), [100, 200]);
+    assert.strictEqual(c.warnings.length, 1);
+    assert.notStrictEqual(loadI18n("en").trMsg(c.warnings[0]), c.warnings[0]);
+    // automático com só alguns antes do início: esses ficam de fora
+    const d = IM.parse("00:00:04:00 A\n01:00:00:00 B", { info, startFrame: 90000, timeBase: "auto" });
+    assert.deepStrictEqual(d.items.map((i) => i.frame), [0]);
+    assert.throws(() => IM.parse("   ", { info }), /Nada para importar/);
+});
+test("importar CSV do Helmet Marker (volta igual ao que saiu)", () => {
+    const info = T.rateInfo(NTSC["29.97"]);
+    const recs = [rec("a", 0, { name: "A; x", comments: "c\"1\"", colorIndex: 1, type: "Chapter" }), rec("b", 1800, { name: "B", durationFrames: 30, colorIndex: 6 })];
+    const out = X.csv(recs, { sep: ";", info, dropFrame: true, startFrame: 107892, colorLabel: (i) => M.colorFor(COLORS, i).label });
+    const r = IM.parse(out, { info, startFrame: 107892, timeBase: "auto", colors: COLORS, fileName: "m.csv" });
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.name, i.comments, i.colorIndex, i.type, i.durationFrames]),
+        [[0, "A; x", "c\"1\"", 1, "Chapter", 0], [1800, "B", "", 6, "Comment", 30]]);
+});
+test("importar CSV do Premiere (tabulação, In/Out) e planilha com vírgula", () => {
+    const info = T.rateInfo(25);
+    const prem = "Marker Name\tDescription\tIn\tOut\tDuration\tMarker Type\nCena 1\tnota\t00:00:02:00\t00:00:03:00\t00:00:01:00\tComment\n";
+    const r = IM.parse(prem, { info, startFrame: 0, colors: COLORS });
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.name, i.comments, i.durationFrames, i.type]), [[50, "Cena 1", "nota", 25, "Comment"]]);
+    const sheet = "name,seconds,color\n\"Oi, tudo\",1.5,red\n";
+    const s2 = IM.parse(sheet, { info, startFrame: 0, colors: COLORS, format: "csv" });
+    assert.deepStrictEqual(s2.items.map((i) => [i.frame, i.name, i.colorIndex]), [[38, "Oi, tudo", 1]]);
+    assert.throws(() => IM.parse("a;b\n1;2", { info, format: "csv" }), /coluna de tempo/);
+});
+test("importar SRT (tempo do início, duração, sem tags)", () => {
+    const info = T.rateInfo(25);
+    const srt = "1\r\n00:00:01,000 --> 00:00:03,500\r\n<i>Olá</i> mundo\r\n\r\n2\r\n00:01:00,000 --> 00:01:01,000\r\nSegunda\r\nlinha\r\n";
+    const r = IM.parse(srt, { info, startFrame: 90000, fileName: "x.srt" });
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.durationFrames, i.name]), [[25, 63, "Olá mundo"], [1500, 25, "Segunda linha"]]);
+});
+test("importar EDL: LOC com cor e drop-frame; sem LOC, um por evento", () => {
+    const info = T.rateInfo(NTSC["29.97"]);
+    const edl = "TITLE: Teste\nFCM: DROP FRAME\n\n001  AX       V     C        00:00:00:00 00:00:05:00 01:00:00:00 01:00:05:00\n* FROM CLIP NAME: entrevista.mov\n* LOC: 01:01:00:02 RED     Corte aqui\n* LOC: 01:00:01:00 ResolveColorBlue Nota |C:ResolveColorBlue |M:Título |D:1\n";
+    const r = IM.parse(edl, { info, startFrame: 107892, colors: COLORS, fileName: "a.edl" });
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.name, i.comments, i.colorIndex]), [[30, "Título", "Nota", 6], [1800, "Corte aqui", "", 1]]);
+    const ev = edl.split("\n").filter((l) => !/LOC/.test(l)).join("\n");
+    const r2 = IM.parse(ev, { info, startFrame: 107892, colors: COLORS, fileName: "a.edl" });
+    assert.deepStrictEqual(r2.items.map((i) => [i.frame, i.name]), [[0, "entrevista.mov"]]);
+    assert.strictEqual(r2.warnings.length, 1);
+    assert.notStrictEqual(loadI18n("en").trMsg(r2.warnings[0]), r2.warnings[0]);
+});
+test("JSON do Helmet Marker: exporta e importa de volta", () => {
+    const info = T.rateInfo(25);
+    const recs = [rec("b", 50, { name: "B", comments: "x", colorIndex: 6, type: "Chapter", durationFrames: 10 }), rec("a", 0, { name: "A" })];
+    const out = X.json(recs, { info, dropFrame: false, startFrame: 0, meta: { name: "Seq" }, colorLabel: (i) => M.colorFor(COLORS, i).label });
+    const data = JSON.parse(out);
+    assert.strictEqual(data.markers[0].timecode, "00:00:00:00");
+    assert.strictEqual(data.sequence.name, "Seq");
+    const r = IM.parse(out, { info, startFrame: 0, colors: COLORS });
+    assert.deepStrictEqual(r.items.map((i) => [i.frame, i.name, i.comments, i.colorIndex, i.type, i.durationFrames]),
+        [[0, "A", "", 0, "Comment", 0], [50, "B", "x", 6, "Chapter", 10]]);
+    assert.throws(() => IM.parse("{oi", { info, format: "json" }), /JSON/);
+});
+test("TXT e lista de revisão", () => {
+    const info = T.rateInfo(25);
+    const recs = [rec("b", 50, { name: "B", comments: "trocar\nmúsica" }), rec("a", 0, { name: "A" }), rec("c", 75)];
+    assert.strictEqual(X.txt(recs, { info, dropFrame: false, startFrame: 0 }), "00:00:00:00\tA\r\n00:00:02:00\tB\ttrocar música\r\n00:00:03:00\t\r\n");
+    assert.strictEqual(X.reviewList(recs, { info, dropFrame: false, startFrame: 0 }), "1. 00:00:00:00 — A\r\n2. 00:00:02:00 — trocar música\r\n3. 00:00:03:00\r\n");
+    assert.strictEqual(X.txt([], { info }), "");
+});
+test("pular os que já existem e o limite de 5000", () => {
+    const info = T.rateInfo(25);
+    const r = IM.parse("0:00 A\n0:01 B", { info });
+    const k = IM.skipExisting(r.items, [rec("x", 0, { name: "A" })]);
+    assert.deepStrictEqual([k.items.length, k.skipped], [1, 1]);
+    const many = Array.from({ length: 5003 }, (_, i) => i + ";m").join("\n");
+    const big = IM.parse("frame;nome\n" + many, { info, format: "csv" });
+    assert.strictEqual(big.items.length, IM.MAX_ITEMS);
+    assert.notStrictEqual(loadI18n("en").trMsg(big.warnings[0]), big.warnings[0]);
+});
+test("UTF-16 (o Premiere exporta marcadores assim)", () => {
+    const text = "Marker Name\tIn\nCanção\t00:00:01:00\n";
+    const le = [0xFF, 0xFE];
+    for (const ch of text) { const c = ch.charCodeAt(0); le.push(c & 255, c >> 8); }
+    assert.strictEqual(IM.decodeUtf16(new Uint8Array(le)), text);
+    const be = [0xFE, 0xFF];
+    for (const ch of text) { const c = ch.charCodeAt(0); be.push(c >> 8, c & 255); }
+    assert.strictEqual(IM.decodeUtf16(new Uint8Array(be)), text);
+    assert.strictEqual(IM.decodeUtf16(new Uint8Array([65, 66])), null);
+});
+test("marcador em cada corte: pula o fim e os que já têm marcador", () => {
+    const p = PL.planCutMarkers([0, 500, 500, 1000, 1300, 2000], [rec("a", 500)], { prefix: "Corte ", digits: 2 });
+    assert.deepStrictEqual(p.items, [{ frame: 0, name: "Corte 01" }, { frame: 1000, name: "Corte 02" }, { frame: 1300, name: "Corte 03" }]);
+    assert.strictEqual(p.skipped, 1);
+    assert.throws(() => PL.planCutMarkers([], []), /clipes/);
+});
+
+const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js", "core/library.js", "core/importers.js"];
 
 function literalCalls(src, fnNames) {
     const out = [];

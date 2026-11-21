@@ -273,7 +273,31 @@
         return plan;
     }
 
+    // ---------- fase 3: marcador em cada corte ----------
+    // cuts: frames dos cortes (início e fim dos clipes; o começo do primeiro clipe conta).
+    // Pula o ÚLTIMO (fim da sequência) e os frames que já têm marcador. Nome: prefixo +
+    // número com zeros, na ordem do tempo.
+    function planCutMarkers(cuts, records, opts) {
+        opts = opts || {};
+        var digits = Number(opts.digits || 2);
+        if (!isInt(digits) || digits < 1 || digits > 6) throw new Error("Os dígitos precisam ser um número inteiro de 1 a 6.");
+        var list = (cuts || []).filter(function (c) { return isInt(c) && c >= 0; }).sort(function (a, b) { return a - b; });
+        list = list.filter(function (c, i) { return i === 0 || c !== list[i - 1]; });
+        if (!list.length) throw new Error("Não há clipes nas trilhas escolhidas.");
+        list.pop();                                   // o fim do último clipe não é um corte
+        var have = {};
+        (records || []).forEach(function (r) { have[r.startFrame] = true; });
+        var prefix = String(opts.prefix == null ? "" : opts.prefix);
+        var items = [], skipped = 0;
+        list.forEach(function (c) {
+            if (have[c]) { skipped++; return; }
+            items.push({ frame: c, name: prefix + padNumber(items.length + 1, digits) });
+        });
+        return { items: items, skipped: skipped };
+    }
+
     return {
+        planCutMarkers: planCutMarkers,
         planDuration: planDuration,
         planDistribute: planDistribute,
         planSnap: planSnap,

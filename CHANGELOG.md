@@ -1,7 +1,11 @@
 # Novidades
 
-## 0.3.0 — produtividade (fase 2)
+## 0.3.0 — produtividade e importação (fases 2 e 3)
 
+- Importar marcadores de arquivo ou de uma lista colada: lista de tempos (inclusive capítulos do YouTube), CSV (o do Helmet Marker, o "Exportar marcadores" do Premiere e planilhas), legenda SRT, EDL (marcadores LOC do Resolve/Avid, ou um por evento) e JSON. Prévia antes de importar, avisos das linhas ignoradas, opção de pular os que já existem. Um Ctrl+Z desfaz (dois quando o arquivo traz cores).
+- Criar um marcador no começo de cada clipe (só vídeo, só áudio ou os dois), numerado.
+- Exportar também lista de revisão ("1. timecode — comentário"), texto simples e JSON.
+- Painel mais leve: só redesenha o que mudou, as prévias esperam um instante depois do clique, a verificação automática faz uma leitura leve e o fundo usa cores sólidas no lugar de degradês. O diagnóstico mostra quanto tempo a lista levou para atualizar.
 - Duração: mesma duração para vários marcadores (em segundos ou frames) e tornar pontuais.
 - Distribuir igualmente entre o primeiro e o último selecionado.
 - Encaixar no corte mais próximo (começo/fim dos clipes de vídeo e/ou áudio), até uma distância máxima.

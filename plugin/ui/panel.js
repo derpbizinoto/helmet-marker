@@ -1,4 +1,4 @@
-// ui/panel.js — Helmet Marker (fases 1 e 2)
+// ui/panel.js — Helmet Marker (fases 1 a 3)
 // Monta a tela, guarda o estado (filtros, seleção) e chama a camada premiere/.
 // Regras: toda alteração em massa é um plano do core/ aplicado numa única transação;
 // erros aparecem sempre na barra de status (nunca em silêncio).
@@ -12,6 +12,7 @@
     var X = HMExport;
     var T = HMTimecode;
     var LIB = HMLibrary;
+    var IM = HMImport;
 
     var POLL_MIN = 2000, POLL_MAX = 15000;
     var TPL_KEY = "helmetmarker.templates";
@@ -49,7 +50,13 @@
         savedSeqId: null,
         scrollSpeed: 3,
         wheelSeen: false,
-        scrollSeen: false
+        lightNext: false,
+        pollCount: 0,
+        lastRenderMs: 0,
+        scrollSeen: false,
+        // fase 3
+        impFileName: "",      // nome do arquivo aberto (ajuda a reconhecer o formato)
+        impSkip: true         // pular os que já existem (mesmo frame e nome)
     };
 
     // ---------- coisas guardadas no painel (localStorage do UXP) ----------
@@ -64,14 +71,18 @@
     function $(id) { return document.getElementById(id); }
     function show(el, visible) { el.style.display = visible ? "" : "none"; }
     function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+    // Escrever na tela custa caro no UXP (refaz o layout): só escreve quando muda.
+    function setText(el, text) { text = String(text); if (el.textContent !== text) el.textContent = text; }
+    function setClass(el, cls) { if (el.className !== cls) el.className = cls; }
     function now() { return new Date().toLocaleTimeString(); }
 
     // ---------- mensagens ----------
     function setStatus(text, kind) {
         var bar = $("status");
-        bar.textContent = text || "";
-        bar.className = "status" + (kind ? " " + kind : "");
-        fitContent();
+        var changed = bar.textContent !== String(text || "");
+        setText(bar, text || "");
+        setClass(bar, "status" + (kind ? " " + kind : ""));
+        if (changed) fitContent();
     }
 
     function errText(err) {
@@ -109,7 +120,11 @@
     async function doRead(reason, silent, doneMessage) {
         var t0 = Date.now();
         if (!silent) setStatus(tr("Lendo marcadores…"));
-        var ctx = await P.getContext();
+        // Na verificação automática, reaproveita taxa de quadros, início e drop-frame da leitura
+        // anterior (só confere se a sequência é a mesma); a cada 10 verificações, lê tudo.
+        var light = state.lightNext && (state.pollCount++ % 10 !== 0);
+        state.lightNext = false;
+        var ctx = await P.getContext(light ? state.ctx : null);
         if (!ctx.sequence) {
             state.ctx = ctx;
             state.records = [];
@@ -158,6 +173,7 @@
     function poll() {
         state.pollTimer = null;
         if (state.busy || state.confirm || state.reading || state.editing) { schedulePoll(); return; }
+        state.lightNext = true;
         read(N("verificação automática"), true).then(function () {
             state.lastPollError = "";
         }, function (e) {
@@ -233,6 +249,7 @@
     function render() {
         // Durante a edição numa célula, redesenhar apagaria o campo: espera terminar.
         if (state.editing) return;
+        var t0 = Date.now();
         $("seqInfo").textContent = seqLine();
         buildColorControls();
         renderSavedList(false);
@@ -279,6 +296,8 @@
         amp.last.list = list.scrollTop;
 
         renderSelectionInfo();
+        if ($("impText").value) scheduleImportPreview();
+        state.lastRenderMs = Date.now() - t0;
         renderDiagnostics();
     }
 
@@ -286,7 +305,7 @@
     function renderSelectionInfo() {
         Array.prototype.forEach.call($("list").childNodes, function (row) {
             var k = row.getAttribute && row.getAttribute("data-key");
-            if (k) row.className = rowClass(k);
+            if (k) setClass(row, rowClass(k));
         });
         var n = S.count(state.selected);
         var parts = [tr("{0} marcadores", state.records.length)];
@@ -295,9 +314,9 @@
         if (state.inOutOn && state.filters.inOut && hasSeq()) {
             parts.push(tr("In/Out: {0} – {1}", tcOf(state.filters.inOut.inFrame), tcOf(state.filters.inOut.outFrame)));
         }
-        $("counts").textContent = parts.join("  ·  ");
-        renderPreviews();
+        setText($("counts"), parts.join("  ·  "));
         updateButtons();
+        schedulePreviews();
     }
 
     function buildColorControls() {
@@ -401,29 +420,40 @@
         }
     }
 
+    // As prévias são recalculadas um instante depois (e uma vez só, mesmo com vários cliques ou
+    // teclas seguidos), para o clique aparecer na hora.
+    var previewTimer = null;
+    function schedulePreviews() {
+        if (previewTimer) return;
+        previewTimer = setTimeout(function () {
+            previewTimer = null;
+            try { renderPreviews(); } catch (e) { showError(e); }
+        }, 80);
+    }
+
     function renderPreviews() {
         var sel = selected();
         var none = tr("Selecione marcadores na lista.");
         var change = N("Vai alterar {0} marcador(es).");
-        $("pvColor").textContent = sel.length ? previewText(function () { return PL.planColor(sel, $("editColor").value).length; }, change) : none;
-        $("pvName").textContent = sel.length ? previewText(function () { return PL.planName(sel, $("editName").value).length; }, change) : none;
-        $("pvComment").textContent = sel.length ? previewText(function () { return PL.planComments(sel, $("editComment").value, $("editCommentMode").value).length; }, change) : none;
-        $("pvType").textContent = sel.length ? previewText(function () { return PL.planType(sel, $("editType").value).length; }, change) : none;
-        $("pvDelete").textContent = sel.length ? tr("Vai excluir {0} marcador(es).", sel.length) : none;
+        setText($("pvColor"), sel.length ? previewText(function () { return PL.planColor(sel, $("editColor").value).length; }, change) : none);
+        setText($("pvName"), sel.length ? previewText(function () { return PL.planName(sel, $("editName").value).length; }, change) : none);
+        setText($("pvComment"), sel.length ? previewText(function () { return PL.planComments(sel, $("editComment").value, $("editCommentMode").value).length; }, change) : none);
+        setText($("pvType"), sel.length ? previewText(function () { return PL.planType(sel, $("editType").value).length; }, change) : none);
+        setText($("pvDelete"), sel.length ? tr("Vai excluir {0} marcador(es).", sel.length) : none);
 
-        $("pvReplace").textContent = sel.length ? previewText(function () {
+        setText($("pvReplace"), sel.length ? previewText(function () {
             return PL.planReplace(sel, $("findText").value, $("replaceText").value, $("findFields").value, state.matchCase).length;
-        }, change) : none;
-        $("pvNumber").textContent = sel.length ? numberPreview(sel) : none;
+        }, change) : none);
+        setText($("pvNumber"), sel.length ? numberPreview(sel) : none);
         var tpl = currentTemplate();
-        if (!state.templates.length) $("pvTpl").textContent = tr("Crie um modelo abaixo.");
-        else if (!tpl) $("pvTpl").textContent = tr("Escolha um modelo.");
-        else $("pvTpl").textContent = sel.length ? previewText(function () { return PL.planTemplate(sel, tpl).length; }, change) : none;
+        if (!state.templates.length) setText($("pvTpl"), tr("Crie um modelo abaixo."));
+        else if (!tpl) setText($("pvTpl"), tr("Escolha um modelo."));
+        else setText($("pvTpl"), sel.length ? previewText(function () { return PL.planTemplate(sel, tpl).length; }, change) : none);
 
         if (hasSeq()) partBPreviews(sel, none, change);
 
-        if (state.afterPlayheadOn) $("pvMove").textContent = tr("Vai mover todos os marcadores a partir do playhead.");
-        else $("pvMove").textContent = sel.length ? tr("Vai mover {0} marcador(es).", sel.length) : none;
+        if (state.afterPlayheadOn) setText($("pvMove"), tr("Vai mover todos os marcadores a partir do playhead."));
+        else setText($("pvMove"), sel.length ? tr("Vai mover {0} marcador(es).", sel.length) : none);
 
         renderExportPreview();
     }
@@ -451,16 +481,21 @@
 
     function renderExportPreview() {
         var box = $("ytPreview"), warn = $("ytWarnings");
-        clear(warn);
-        if (!hasSeq()) { box.textContent = ""; show(box, false); $("pvYt").textContent = ""; return; }
-        var targets = exportTargets();
-        var yt = X.youtubeChapters(targets, state.ctx.info);
-        box.textContent = yt.text;
+        var yt = { text: "", warnings: [] }, targets = [];
+        if (hasSeq()) {
+            targets = exportTargets();
+            yt = X.youtubeChapters(targets, state.ctx.info);
+        }
+        setText(box, yt.text);
         show(box, !!yt.text);
-        $("pvYt").textContent = targets.length ? tr("{0} capítulo(s).", targets.length) : "";
-        yt.warnings.forEach(function (w) {
+        setText($("pvYt"), targets.length ? tr("{0} capítulo(s).", targets.length) : "");
+        var warnText = yt.warnings.map(function (w) { return "⚠ " + trMsg(w); });
+        if (warnText.join("\n") === state.lastWarnText) return;
+        state.lastWarnText = warnText.join("\n");
+        clear(warn);
+        warnText.forEach(function (t) {
             var d = document.createElement("div");
-            d.textContent = "⚠ " + trMsg(w);
+            d.textContent = t;
             warn.appendChild(d);
         });
     }
@@ -482,19 +517,20 @@
         }
         lines.push(tr("Roda do mouse no painel: {0}", state.wheelSeen ? tr("recebida") : tr("ainda não recebida")));
         lines.push(tr("Aviso de rolagem no painel: {0}", state.scrollSeen ? tr("recebido") : tr("ainda não recebido")));
+        lines.push(tr("Última atualização da lista: {0} ms", state.lastRenderMs));
         var box = $("diag");
-        clear(box);
-        lines.forEach(function (l) {
-            var d = document.createElement("div");
-            d.textContent = l;
-            box.appendChild(d);
+        while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
+        lines.forEach(function (l, i) {
+            var d = box.childNodes[i];
+            if (!d) { d = document.createElement("div"); box.appendChild(d); }
+            setText(d, l);
         });
     }
 
     function setEnabled(id, ok) {
         var el = $(id);
         var base = el.className.replace(/(^|\s)is-disabled(?=\s|$)/g, "").trim();
-        el.className = ok ? base : base + " is-disabled";
+        setClass(el, ok ? base : base + " is-disabled");
     }
 
     function updateButtons() {
@@ -506,7 +542,11 @@
         var canMove = ready && (n || state.afterPlayheadOn);
         ["btnMinusSec", "btnMinusFrame", "btnPlusFrame", "btnPlusSec", "btnMove"].forEach(function (id) { setEnabled(id, canMove); });
         var canExport = ready && exportTargets().length > 0;
-        ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy"].forEach(function (id) { setEnabled(id, canExport); });
+        ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy", "btnOtherSave", "btnOtherCopy"].forEach(function (id) { setEnabled(id, canExport); });
+        setEnabled("btnImpOpen", !state.busy);
+        setEnabled("btnImport", ready && !!$("impText").value.trim());
+        setEnabled("btnCutMarkers", ready);
+        setClass($("chipImpSkip"), "chip" + (state.impSkip ? " on" : ""));
         setEnabled("btnTest", ready);
         ["btnReplace", "btnNumber"].forEach(function (id) { setEnabled(id, ready && n); });
         var tpl = currentTemplate();
@@ -517,11 +557,11 @@
         setEnabled("btnSavedLoad", ready && saved);
         setEnabled("btnSavedDelete", !!saved);
         setEnabled("btnSavedSave", ready && n);
-        $("chipMatchCase").className = "chip" + (state.matchCase ? " on" : "");
+        setClass($("chipMatchCase"), "chip" + (state.matchCase ? " on" : ""));
         ["btnDuration", "btnPoint", "btnSnap", "btnDedupe", "btnMerge"].forEach(function (id) { setEnabled(id, ready && n); });
         setEnabled("btnDistribute", ready && n >= 3);
-        $("chipInOut").className = "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled");
-        $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
+        setClass($("chipInOut"), "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled"));
+        setClass($("chipAfterPlayhead"), "chip" + (state.afterPlayheadOn ? " on" : ""));
     }
 
     // ---------- operações ----------
@@ -675,17 +715,17 @@
     }
 
     function partBPreviews(sel, none, change) {
-        $("pvDuration").textContent = sel.length ? previewText(function () { return PL.planDuration(sel, durationFrames()).length; }, change) : none;
-        $("pvDistribute").textContent = sel.length ? previewText(function () { return PL.planDistribute(sel).length; }, change) : none;
-        $("pvSnap").textContent = sel.length ? tr("Os cortes são lidos ao clicar.") : none;
-        $("pvClean").textContent = !sel.length ? none : (function () {
+        setText($("pvDuration"), sel.length ? previewText(function () { return PL.planDuration(sel, durationFrames()).length; }, change) : none);
+        setText($("pvDistribute"), sel.length ? previewText(function () { return PL.planDistribute(sel).length; }, change) : none);
+        setText($("pvSnap"), sel.length ? tr("Os cortes são lidos ao clicar.") : none);
+        setText($("pvClean"), !sel.length ? none : (function () {
             try {
                 var tol = Number($("cleanTol").value);
                 var d = cleanCounts(PL.planDedupe(sel, tol)).removed;
                 if (!d) return tr("Nenhum duplicado ou marcador próximo nessa distância.");
                 return tr("Grupos encontrados: vai excluir {0} marcador(es).", d);
             } catch (e) { return errText(e); }
-        })();
+        })());
     }
 
     function onTest() {
@@ -1063,6 +1103,25 @@
         });
     }
 
+    // fase 3: lista de revisão, TXT e JSON
+    function exportOpts() {
+        return { info: state.ctx.info, dropFrame: state.ctx.dropFrame, startFrame: state.ctx.startFrame, colorLabel: colorLabel };
+    }
+    function otherText() {
+        var targets = exportTargets();
+        if (!targets.length) throw new Error("Nenhum marcador para exportar.");
+        var fmt = $("otherFormat").value, o = exportOpts();
+        if (fmt === "json") {
+            o.meta = { name: state.ctx.sequenceName, fps: state.ctx.info.label, dropFrame: !!state.ctx.dropFrame, startTimecode: tcOf(0) };
+            return X.json(targets, o);
+        }
+        return fmt === "txt" ? X.txt(targets, o) : X.reviewList(targets, o);
+    }
+    function onOtherSave() {
+        var fmt = $("otherFormat").value;
+        doSave(otherText, fmt === "review" ? N("revisão") : N("marcadores"), fmt === "json" ? "json" : "txt");
+    }
+
     async function doCopy(getText, doneKey) {
         try {
             await P.copyText(getText());
@@ -1080,6 +1139,175 @@
         } catch (e) {
             showError(e);
         }
+    }
+
+    // ---------- fase 3: importar e gerar ----------
+    var IMPORT_PREVIEW_LINES = 12;
+
+    // Lê o texto do campo com as opções escolhidas. Devolve { items, warnings, skipped }.
+    function importResult() {
+        var c = state.ctx;
+        var r = IM.parse($("impText").value, {
+            format: $("impFormat").value,
+            fileName: state.impFileName,
+            info: c.info,
+            startFrame: c.startFrame,
+            timeBase: $("impBase").value,
+            colors: c.colors
+        });
+        var skipped = 0;
+        if (state.impSkip) {
+            var k = IM.skipExisting(r.items, state.records);
+            r.items = k.items;
+            skipped = k.skipped;
+        }
+        return { items: r.items, warnings: r.warnings, skipped: skipped, format: r.format };
+    }
+
+    var importTimer = null;
+    function scheduleImportPreview() {
+        if (importTimer) clearTimeout(importTimer);
+        importTimer = setTimeout(function () {
+            importTimer = null;
+            try { renderImportPreview(); } catch (e) { showError(e); }
+        }, 150);
+    }
+
+    function importLine(it) {
+        var parts = [tcOf(it.frame), it.name || "—"];
+        if (it.comments) parts.push("· " + it.comments);
+        if (it.durationFrames) parts.push("[" + T.durationLabel(it.durationFrames, state.ctx.info) + "]");
+        if (it.colorIndex !== null) parts.push("(" + colorLabel(it.colorIndex) + ")");
+        return parts.join("  ");
+    }
+
+    function renderImportPreview() {
+        var box = $("impPreview"), warn = $("impWarnings");
+        var text = $("impText").value;
+        clear(warn);
+        updateButtons();
+        if (!text.trim() || !hasSeq()) {
+            setText(box, ""); show(box, false);
+            setText($("pvImport"), text.trim() ? tr("Abra uma sequência na timeline e clique em Atualizar.") : "");
+            return;
+        }
+        var r;
+        try { r = importResult(); } catch (e) {
+            setText(box, ""); show(box, false);
+            setText($("pvImport"), "⚠ " + errText(e));
+            return;
+        }
+        var lines = r.items.slice(0, IMPORT_PREVIEW_LINES).map(importLine);
+        if (r.items.length > IMPORT_PREVIEW_LINES) lines.push(tr("… e mais {0}.", r.items.length - IMPORT_PREVIEW_LINES));
+        setText(box, lines.join("\n"));
+        show(box, lines.length > 0);
+        var msg = tr("Vai criar {0} marcador(es).", r.items.length);
+        if (r.skipped) msg += " " + tr("{0} já existe(m) e fica(m) de fora.", r.skipped);
+        setText($("pvImport"), msg);
+        r.warnings.forEach(function (w) {
+            var d = document.createElement("div");
+            d.textContent = "⚠ " + trMsg(w);
+            warn.appendChild(d);
+        });
+    }
+
+    async function onImpOpen() {
+        if (state.busy) return;
+        try {
+            var file = await P.openTextFile(["csv", "tsv", "txt", "srt", "edl", "json"]);
+            if (!file) { setStatus(tr("Abertura cancelada."), "warn"); return; }
+            state.impFileName = file.name;
+            $("impText").value = file.text;
+            setText($("impFile"), file.name);
+            setStatus(tr("Arquivo aberto: {0}. Confira a prévia e clique em Importar.", file.name), "ok");
+            renderImportPreview();
+            fitContent();
+        } catch (e) {
+            showError(e);
+        }
+    }
+
+    function onImpClear() {
+        $("impText").value = "";
+        state.impFileName = "";
+        setText($("impFile"), "");
+        renderImportPreview();
+        fitContent();
+    }
+
+    // Cria marcadores (uma transação) e relê. buildItems devolve { items, emptyMessage }.
+    // Depois de reler, after(antigos) pode fazer uma segunda etapa (as cores da importação).
+    async function runAdd(buildItems, undoLabel, doneKey, after) {
+        if (state.busy) return;
+        state.busy = true;
+        updateButtons();
+        var message, before = {}, built;
+        try {
+            await read(N("antes de uma operação do painel"), true);
+            state.records.forEach(function (r) { before[r.key] = true; });
+            built = await buildItems();
+            if (!built.items.length) { setStatus(tr(built.emptyMessage), "warn"); return; }
+            P.addMarkers(state.ctx, built.items, undoLabel);
+            message = tr(doneKey, built.items.length);
+        } catch (e) {
+            showError(e);
+            return;
+        } finally {
+            state.busy = false;
+            updateButtons();
+        }
+        await read(N("depois de uma operação do painel"), true, message).catch(showError);
+        if (after) await after(built.items, before);
+    }
+
+    function onImport() {
+        runAdd(function () {
+            var r = importResult();
+            return { items: r.items, emptyMessage: N("Nada para importar: nenhum marcador novo reconhecido.") };
+        }, tr("Helmet Marker: importar marcadores"), N("Marcadores importados: {0}. Um Ctrl+Z desfaz."), applyImportColors);
+    }
+
+    // A cor não entra na criação (a API não devolve o marcador criado): os novos são achados
+    // pelo frame e pelo nome depois de reler, e recebem a cor numa segunda transação.
+    async function applyImportColors(items, before) {
+        var wanted = items.filter(function (it) { return it.colorIndex !== null; });
+        if (!wanted.length) return;
+        var pool = {};
+        state.records.forEach(function (r) {
+            if (before[r.key]) return;
+            var k = r.startFrame + "|" + r.name;
+            (pool[k] = pool[k] || []).push(r);
+        });
+        var plan = [];
+        wanted.forEach(function (it) {
+            var list = pool[it.frame + "|" + it.name];
+            var r = list && list.shift();
+            if (r && r.colorIndex !== it.colorIndex) plan.push({ record: r, color: it.colorIndex });
+        });
+        if (!plan.length) return;
+        state.busy = true;
+        updateButtons();
+        var message;
+        try {
+            P.applyPlan(state.ctx, plan, tr("Helmet Marker: cores dos importados"));
+            message = tr("Marcadores importados: {0}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.", items.length);
+        } catch (e) {
+            showError(e);
+            return;
+        } finally {
+            state.busy = false;
+            updateButtons();
+        }
+        await read(N("depois de uma operação do painel"), true, message).catch(showError);
+    }
+
+    function onCutMarkers() {
+        runAdd(async function () {
+            var cuts = await P.getCutFrames(state.ctx, $("cutTracks").value);
+            var prefix = $("cutPrefix").value.trim() || tr("Corte");
+            var p = PL.planCutMarkers(cuts, state.records, { prefix: prefix + " ", digits: 2 });
+            return { items: p.items, emptyMessage: N("Todos os cortes já têm marcador.") };
+        }, tr("Helmet Marker: marcadores nos cortes"), N("Marcadores criados nos cortes: {0}. Um Ctrl+Z desfaz."));
     }
 
     // ---------- eventos do Premiere ----------
@@ -1236,8 +1464,8 @@
         on("btnDelete", "click", onDelete);
         on("btnConfirmYes", "click", function () { closeConfirm(true); });
         on("btnConfirmNo", "click", function () { closeConfirm(false); });
-        ["editColor", "editCommentMode", "editType"].forEach(function (id) { on(id, "change", renderPreviews); });
-        ["editName", "editComment"].forEach(function (id) { on(id, "input", renderPreviews); });
+        ["editColor", "editCommentMode", "editType"].forEach(function (id) { on(id, "change", schedulePreviews); });
+        ["editName", "editComment"].forEach(function (id) { on(id, "input", schedulePreviews); });
 
         // mover
         on("btnMinusSec", "click", function () { onShift(-secondFrames()); });
@@ -1252,14 +1480,26 @@
         on("btnYtSave", "click", function () { doSave(chaptersText, N("capítulos"), "txt"); });
         on("btnCsvSave", "click", function () { doSave(csvText, N("marcadores"), "csv"); });
         on("btnCsvCopy", "click", function () { doCopy(csvText, N("CSV copiado.")); });
+        on("btnOtherSave", "click", onOtherSave);
+        on("btnOtherCopy", "click", function () { doCopy(otherText, N("Texto copiado.")); });
+
+        // fase 3: importar e gerar
+        on("btnImpOpen", "click", onImpOpen);
+        on("btnImpClear", "click", onImpClear);
+        on("impText", "input", scheduleImportPreview);
+        ["impFormat", "impBase"].forEach(function (id) { on(id, "change", scheduleImportPreview); });
+        on("chipImpSkip", "click", function () { state.impSkip = !state.impSkip; renderImportPreview(); });
+        on("btnImport", "click", onImport);
+        show($("impPreview"), false);
+        on("btnCutMarkers", "click", onCutMarkers);
 
         on("btnTest", "click", onTest);
 
         // fase 2: localizar e numerar
         on("btnReplace", "click", onReplace);
         on("chipMatchCase", "click", function () { state.matchCase = !state.matchCase; renderSelectionInfo(); });
-        ["findText", "replaceText", "numPrefix", "numStart", "numStep", "numDigits", "numSuffix"].forEach(function (id) { on(id, "input", renderPreviews); });
-        on("findFields", "change", renderPreviews);
+        ["findText", "replaceText", "numPrefix", "numStart", "numStep", "numDigits", "numSuffix"].forEach(function (id) { on(id, "input", schedulePreviews); });
+        on("findFields", "change", schedulePreviews);
         on("btnNumber", "click", onNumber);
 
         // fase 2: modelos
@@ -1288,8 +1528,8 @@
         on("btnMerge", "click", function () { onClean("merge"); });
         on("btnCleanYes", "click", function () { closeConfirm(true); });
         on("btnCleanNo", "click", function () { closeConfirm(false); });
-        ["durValue", "snapMax", "cleanTol"].forEach(function (id) { on(id, "input", renderPreviews); });
-        ["durUnit", "snapTracks"].forEach(function (id) { on(id, "change", renderPreviews); });
+        ["durValue", "snapMax", "cleanTol"].forEach(function (id) { on(id, "input", schedulePreviews); });
+        ["durUnit", "snapTracks"].forEach(function (id) { on(id, "change", schedulePreviews); });
 
         window.addEventListener("error", function (e) { showError(e.error || e.message); });
         window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });

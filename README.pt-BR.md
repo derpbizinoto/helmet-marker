@@ -23,6 +23,8 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 - Modelos de marcador (nome, cor, tipo, comentário): aplicar na seleção ou criar um marcador no playhead.
 - Seleções salvas com nome, por sequência.
 - Tempo: mesma duração para vários, distribuir igualmente, encaixar no corte mais próximo, remover duplicados e mesclar próximos.
+- Importar de lista colada, CSV (inclusive o do Premiere), SRT, EDL ou JSON, com prévia; criar um marcador em cada corte.
+- Exportar também lista de revisão, texto simples e JSON.
 - Atualiza a lista sozinho: ao trocar de sequência e com uma verificação leve a cada poucos segundos (o Premiere não avisa quando um marcador é criado na timeline).
 
 ## Requisitos
@@ -77,7 +79,7 @@ Cobrem a parte que não depende do Premiere (`plugin\core\`): contas de frame e 
 
 | Pasta | O que tem |
 |---|---|
-| `plugin/core/` | Lógica pura (frames, timecode, filtros, seleção, planos de alteração, exportação). Nenhuma chamada ao Premiere; testada no Node. |
+| `plugin/core/` | Lógica pura (frames, timecode, filtros, seleção, planos de alteração, importação e exportação). Nenhuma chamada ao Premiere; testada no Node. |
 | `plugin/premiere/` | Camada fina que lê marcadores e aplica as alterações numa única transação. |
 | `plugin/ui/` | O painel. |
 | `plugin/strings/` | Todos os textos da interface (português e inglês). |

@@ -106,7 +106,51 @@
         return framesToTimecode(frames, info, false, 0);
     }
 
+    // ---------- fase 3: texto -> frame (para importar) ----------
+    // "HH:MM:SS:FF" (non-drop) ou com ";" (drop-frame) -> número de frames contado a partir de
+    // 00:00:00:00 (o painel desconta o início da sequência). dropFrame força drop-frame mesmo
+    // com ":" (as EDLs avisam drop-frame numa linha "FCM:" e usam ":"). Inverso exato de
+    // framesToTimecode. Devolve null se o texto não for um timecode válido.
+    var TC_RE = /^(-)?(\d{1,2})[:;](\d{2})[:;](\d{2})([:;.])(\d{2,3})$/;
+
+    function timecodeToFrames(text, info, dropFrame) {
+        if (!info) throw new Error("Sem informações da taxa de quadros.");
+        var m = TC_RE.exec(String(text || "").trim());
+        if (!m) return null;
+        var hh = +m[2], mm = +m[3], ss = +m[4], ff = +m[6];
+        var nominal = info.nominal;
+        if (mm > 59 || ss > 59 || ff >= nominal) return null;
+        var useDrop = info.dropCapable && (dropFrame || String(text).indexOf(";") >= 0);
+        var frames = (hh * 3600 + mm * 60 + ss) * nominal + ff;
+        if (useDrop) {
+            var drop = nominal === 60 ? 4 : 2;
+            if (ss === 0 && ff < drop && mm % 10 !== 0) return null;   // número que não existe em DF
+            var totalMinutes = hh * 60 + mm;
+            frames -= drop * (totalMinutes - Math.floor(totalMinutes / 10));
+        }
+        return m[1] ? -frames : frames;
+    }
+
+    // Relógio "M:SS", "MM:SS", "H:MM:SS", com fração opcional ("1:02.5", "00:01:02,500")
+    // -> segundos (número). Devolve null se não for um relógio.
+    var CLOCK_RE = /^(\d{1,3}):(\d{2})(?::(\d{2}))?(?:[.,](\d{1,3}))?$/;
+
+    function clockToSeconds(text) {
+        var m = CLOCK_RE.exec(String(text || "").trim());
+        if (!m) return null;
+        var a = +m[1], b = +m[2], c = m[3] === undefined ? null : +m[3];
+        var frac = m[4] ? Number("0." + m[4]) : 0;
+        if (c === null) {               // M:SS
+            if (b > 59) return null;
+            return a * 60 + b + frac;
+        }
+        if (b > 59 || c > 59) return null;   // H:MM:SS
+        return a * 3600 + b * 60 + c + frac;
+    }
+
     return {
+        timecodeToFrames: timecodeToFrames,
+        clockToSeconds: clockToSeconds,
         rateInfo: rateInfo,
         formatFps: formatFps,
         frameFromTicks: frameFromTicks,

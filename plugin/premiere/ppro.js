@@ -26,6 +26,8 @@
 //   VideoClipTrackItem/AudioClipTrackItem.getStartTime / getEndTime (25.6, Promise<TickTime>)
 // Fora do Premiere (API UXP, conferida em developer.adobe.com/premiere-pro/uxp/uxp-api/):
 //   require("uxp").storage.localFileSystem.getFileForSaving(nome, { types }) -> File ou null;
+//   getFileForOpening({ types, allowMultiple }) -> File ou null; File.read({ format }) com
+//   storage.formats.utf8 / binary (Promise<string|ArrayBuffer>);
 //   File.write(texto) (UTF-8); navigator.clipboard.writeText (UXP 6.0) / setContent.
 //   Permissões no manifest: localFileSystem "request" e clipboard "readAndWrite".
 // Vêm do exemplo oficial (uxp-premiere-pro-samples), não da referência, por isso têm reserva:
@@ -53,12 +55,23 @@ var HMPremiere = (function () {
     }
 
     // ---------- contexto: projeto + sequência ativa + taxa de quadros ----------
-    async function getContext() {
+    // prev: contexto da leitura anterior. Se a sequência ativa for a mesma, reaproveita taxa de
+    // quadros, início e drop-frame (leitura "leve", usada na verificação automática).
+    async function getContext(prev) {
         var a = ppro();
         var project = await a.Project.getActiveProject();
         if (!project) throw new Error("Nenhum projeto aberto.");
         var sequence = await project.getActiveSequence();
         if (!sequence) return { project: project, sequence: null };
+        if (prev && prev.sequence && prev.sequenceId && guidText(sequence.guid) === prev.sequenceId) {
+            var light = {};
+            Object.keys(prev).forEach(function (k) { light[k] = prev[k]; });
+            light.project = project;
+            light.sequence = sequence;
+            light.sequenceName = sequence.name;
+            light.markersObj = null;
+            return light;
+        }
 
         var settings = await sequence.getSettings();
         var frameRate = await val(settings.getVideoFrameRate());
@@ -274,6 +287,24 @@ var HMPremiere = (function () {
         return file.name || suggestedName;
     }
 
+    // Abre a janela "Abrir arquivo" (localFileSystem.getFileForOpening). Devolve
+    // { name, text } ou null se o usuário cancelar. Lê os bytes primeiro (formats.binary) para
+    // reconhecer UTF-16 — o "Exportar marcadores" do Premiere pode salvar assim; senão lê como
+    // UTF-8 (o padrão de file.read) e tira o BOM.
+    async function openTextFile(types) {
+        var storage = require("uxp").storage;
+        var file = await storage.localFileSystem.getFileForOpening({ types: types, allowMultiple: false });
+        if (!file) return null;
+        if (Array.isArray(file)) { file = file[0]; if (!file) return null; }
+        var text = null;
+        try {
+            var buf = await file.read({ format: storage.formats.binary });
+            text = HMImport.decodeUtf16(new Uint8Array(buf));
+        } catch (e) { text = null; }
+        if (text === null) text = await file.read({ format: storage.formats.utf8 });
+        return { name: file.name || "", text: String(text || "").replace(/^\uFEFF/, "") };
+    }
+
     async function copyText(text) {
         var cb = navigator.clipboard;
         if (!cb) throw new Error("A área de transferência não está disponível.");
@@ -282,12 +313,13 @@ var HMPremiere = (function () {
         return true;
     }
 
-    // plan: [{ frame, name, type?, comments? }] (ex.: HMMarkers.planTestMarkers). Marcadores
-    // pontuais; sem tipo = Comentário.
+    // plan: [{ frame, name, type?, comments?, durationFrames? }] (teste, importação, cortes).
+    // Sem tipo = Comentário; sem duração = pontual.
     // (Cor não é definida aqui: createAddMarkerAction não devolve o marcador criado, e mudar
-    // a cor exige uma segunda transação — dois Ctrl+Z.)
+    // a cor exige uma segunda transação — dois Ctrl+Z. O painel faz isso depois de reler.)
     function addMarkers(ctx, plan, undoLabel) {
         if (!ctx.markersObj) throw new Error("Atualize a lista antes de alterar marcadores.");
+        if (!plan.length) return false;
         var a = ppro();
         var zero = a.TickTime.TIME_ZERO || a.TickTime.createWithFrameAndFrameRate(0, ctx.frameRate);
         var items = plan.map(function (p) {
@@ -295,11 +327,12 @@ var HMPremiere = (function () {
                 name: String(p.name || ""),
                 type: typeValue(p.type || "Comment"),
                 comments: String(p.comments || ""),
-                time: tickAtFrame(ctx, p.frame)
+                time: tickAtFrame(ctx, p.frame),
+                duration: p.durationFrames > 0 ? tickAtFrame(ctx, p.durationFrames) : zero
             };
         });
         return runTransaction(ctx, undoLabel, function (add) {
-            items.forEach(function (it) { add(ctx.markersObj.createAddMarkerAction(it.name, it.type, it.time, zero, it.comments)); });
+            items.forEach(function (it) { add(ctx.markersObj.createAddMarkerAction(it.name, it.type, it.time, it.duration, it.comments)); });
         });
     }
 
@@ -339,6 +372,7 @@ var HMPremiere = (function () {
         getInOut: getInOut,
         getCutFrames: getCutFrames,
         saveTextFile: saveTextFile,
+        openTextFile: openTextFile,
         copyText: copyText,
         listen: listen
     };
