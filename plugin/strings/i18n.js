@@ -336,6 +336,7 @@ var HMI18n = (function () {
         "A quantidade precisa ser um número inteiro entre 1 e 5000.": "The count must be a whole number between 1 and 5000.",
         "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
         // fase 3 (parte A)
+        "Maior travada do painel (últimos 30 s): {0} ms": "Longest panel freeze (last 30 s): {0} ms",
         "Importar e gerar": "Import and generate",
         "Cria marcadores a partir de um arquivo (CSV, SRT, EDL, JSON ou TXT) ou de uma lista colada aqui. Tudo entra de uma vez: um Ctrl+Z desfaz.": "Creates markers from a file (CSV, SRT, EDL, JSON or TXT) or from a list pasted here. Everything goes in at once: one Ctrl+Z undoes it.",
         "Abrir arquivo…": "Open file…",

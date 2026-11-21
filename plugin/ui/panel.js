@@ -74,6 +74,8 @@
     // Escrever na tela custa caro no UXP (refaz o layout): só escreve quando muda.
     function setText(el, text) { text = String(text); if (el.textContent !== text) el.textContent = text; }
     function setClass(el, cls) { if (el.className !== cls) el.className = cls; }
+    // No Premiere 26.5.2 o <textarea> vazio devolve value = null (não ""): sempre ler por aqui.
+    function fieldText(id) { var v = $(id).value; return v === null || v === undefined ? "" : String(v); }
     function now() { return new Date().toLocaleTimeString(); }
 
     // ---------- mensagens ----------
@@ -296,7 +298,7 @@
         amp.last.list = list.scrollTop;
 
         renderSelectionInfo();
-        if ($("impText").value) scheduleImportPreview();
+        if (fieldText("impText")) scheduleImportPreview();
         state.lastRenderMs = Date.now() - t0;
         renderDiagnostics();
     }
@@ -501,6 +503,8 @@
     }
 
     function renderDiagnostics() {
+        // Escrever na tela refaz o layout do painel inteiro no UXP; com o cartão fechado, nada muda.
+        if (isCollapsed("tools")) return;
         var c = state.ctx;
         var lines = [];
         lines.push(tr("Eventos registrados: {0}", state.events.length ? state.events.join(", ") : tr("nenhum")));
@@ -518,6 +522,7 @@
         lines.push(tr("Roda do mouse no painel: {0}", state.wheelSeen ? tr("recebida") : tr("ainda não recebida")));
         lines.push(tr("Aviso de rolagem no painel: {0}", state.scrollSeen ? tr("recebido") : tr("ainda não recebido")));
         lines.push(tr("Última atualização da lista: {0} ms", state.lastRenderMs));
+        lines.push(tr("Maior travada do painel (últimos 30 s): {0} ms", lagProbe.max));
         var box = $("diag");
         while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
         lines.forEach(function (l, i) {
@@ -544,7 +549,7 @@
         var canExport = ready && exportTargets().length > 0;
         ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy", "btnOtherSave", "btnOtherCopy"].forEach(function (id) { setEnabled(id, canExport); });
         setEnabled("btnImpOpen", !state.busy);
-        setEnabled("btnImport", ready && !!$("impText").value.trim());
+        setEnabled("btnImport", ready && !!fieldText("impText").trim());
         setEnabled("btnCutMarkers", ready);
         setClass($("chipImpSkip"), "chip" + (state.impSkip ? " on" : ""));
         setEnabled("btnTest", ready);
@@ -1147,7 +1152,7 @@
     // Lê o texto do campo com as opções escolhidas. Devolve { items, warnings, skipped }.
     function importResult() {
         var c = state.ctx;
-        var r = IM.parse($("impText").value, {
+        var r = IM.parse(fieldText("impText"), {
             format: $("impFormat").value,
             fileName: state.impFileName,
             info: c.info,
@@ -1183,7 +1188,7 @@
 
     function renderImportPreview() {
         var box = $("impPreview"), warn = $("impWarnings");
-        var text = $("impText").value;
+        var text = fieldText("impText");
         clear(warn);
         updateButtons();
         if (!text.trim() || !hasSeq()) {
@@ -1304,7 +1309,7 @@
     function onCutMarkers() {
         runAdd(async function () {
             var cuts = await P.getCutFrames(state.ctx, $("cutTracks").value);
-            var prefix = $("cutPrefix").value.trim() || tr("Corte");
+            var prefix = fieldText("cutPrefix").trim() || tr("Corte");
             var p = PL.planCutMarkers(cuts, state.records, { prefix: prefix + " ", digits: 2 });
             return { items: p.items, emptyMessage: N("Todos os cortes já têm marcador.") };
         }, tr("Helmet Marker: marcadores nos cortes"), N("Marcadores criados nos cortes: {0}. Um Ctrl+Z desfaz."));
@@ -1317,6 +1322,64 @@
     }
 
     // ---------- altura da área que rola ----------
+    // ---------- cartões recolhíveis ----------
+    // O UXP recalcula o layout do painel inteiro a cada mudança na tela; cartão fechado
+    // (display: none) sai dessa conta. Clicar no título abre/fecha; o painel lembra.
+    var CARDS_KEY = "helmetmarker.cards";
+    var DEFAULT_OPEN = { edit: true };
+    var cardState = {};
+
+    function isCollapsed(key) { return cardState[key] === undefined ? !DEFAULT_OPEN[key] : !!cardState[key]; }
+
+    function setupCards() {
+        try { cardState = JSON.parse(window.localStorage.getItem(CARDS_KEY) || "{}") || {}; } catch (e) { cardState = {}; }
+        var cards = document.querySelectorAll("section[data-card]");
+        for (var i = 0; i < cards.length; i++) {
+            var card = cards[i], key = card.getAttribute("data-card");
+            var title = card.querySelector(".card-title");
+            var body = document.createElement("div");
+            body.className = "card-body";
+            while (title.nextSibling) body.appendChild(title.nextSibling);
+            card.appendChild(body);
+            var arrow = document.createElement("span");
+            arrow.className = "card-arrow";
+            title.insertBefore(arrow, title.firstChild);
+            title.setAttribute("role", "button");
+            title.addEventListener("click", (function (k) { return function () { toggleCard(k); }; })(key));
+            paintCard(key);
+        }
+    }
+
+    function paintCard(key) {
+        var card = document.querySelector('section[data-card="' + key + '"]');
+        if (!card) return;
+        var closed = isCollapsed(key);
+        setClass(card, "card" + (closed ? " collapsed" : ""));
+        setText(card.querySelector(".card-arrow"), closed ? "▸ " : "▾ ");
+        card.querySelector(".card-body").style.display = closed ? "none" : "block";
+    }
+
+    function toggleCard(key) {
+        cardState[key] = !isCollapsed(key);
+        try { window.localStorage.setItem(CARDS_KEY, JSON.stringify(cardState)); } catch (e) { /* só nesta sessão */ }
+        paintCard(key);
+        if (key === "tools") renderDiagnostics();
+        if (key === "import") renderImportPreview();
+    }
+
+    // ---------- medidor de travadas ----------
+    // Um relógio a cada 100 ms: se ele atrasa, o painel ficou travado esse tempo (o JavaScript do
+    // painel e o desenho da tela usam a mesma fila). Guarda o maior atraso dos últimos 30 s.
+    var lagProbe = { last: Date.now(), max: 0, maxAt: 0 };
+    function startLagProbe() {
+        setInterval(function () {
+            var t = Date.now();
+            var late = Math.max(0, t - lagProbe.last - 100);
+            lagProbe.last = t;
+            if (late >= lagProbe.max || t - lagProbe.maxAt > 30000) { lagProbe.max = late; lagProbe.maxAt = t; }
+        }, 100);
+    }
+
     function fitContent() {
         var h = window.innerHeight;
         if (!h) return;
@@ -1412,6 +1475,8 @@
     }
 
     function init() {
+        setupCards();
+        startLagProbe();
         fitContent();
         window.addEventListener("resize", fitContent);
         setTimeout(fitContent, 300);

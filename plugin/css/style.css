@@ -72,7 +72,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: var(--space-2) var(--space-3);
-    background: var(--panel-fill);
+    background-color: #19121F;   /* meio do degradê --panel-fill (lag) */
     border-bottom: 1px solid var(--color-border);
 }
 .brand { display: flex; align-items: center; }
@@ -197,7 +197,7 @@ h1 {
     padding: var(--space-2) var(--space-3);
     font-size: 12px;
     border-top: 1px solid var(--color-border);
-    background: var(--panel-fill);
+    background-color: #19121F;
     color: var(--text-secondary);
     min-height: 16px;
 }
@@ -290,6 +290,12 @@ h1 {
     font-family: var(--font-mono);
     font-size: 11px;
 }
+
+/* cartões recolhíveis */
+.card.collapsed { padding-bottom: var(--space-2); }
+.card.collapsed .card-title { margin-bottom: 0; }
+.card-title:hover { color: var(--color-accent); }
+.card-arrow { color: var(--color-accent); }
 
 /* painel estreito: some a coluna Duração e o tipo encolhe (o resto continua legível) */
 @media (max-width: 520px) {
