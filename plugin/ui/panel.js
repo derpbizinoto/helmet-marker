@@ -26,6 +26,7 @@
         var bar = $("status");
         bar.textContent = text || "";
         bar.className = "status" + (kind ? " " + kind : "");
+        fitContent();   // mensagem longa pode ocupar duas linhas
     }
 
     function showError(err) {
@@ -274,8 +275,21 @@
         }, 400);
     }
 
+    // ---------- altura da área que rola ----------
+    // Garante a rolagem mesmo se o UXP não resolver height: 100% no CSS: a área do meio
+    // fica com a altura da janela menos o cabeçalho e a barra de status.
+    function fitContent() {
+        var h = window.innerHeight;
+        if (!h) return;
+        var used = $("appHeader").offsetHeight + $("status").offsetHeight;
+        $("content").style.height = Math.max(80, h - used) + "px";
+    }
+
     // ---------- início ----------
     function init() {
+        fitContent();
+        window.addEventListener("resize", fitContent);
+        setTimeout(fitContent, 300);   // de novo depois das fontes e do texto da barra de status
         $("version").textContent = "v" + HM_VERSION;
         var lang = $("langSelect");
         lang.value = HMI18n.lang();

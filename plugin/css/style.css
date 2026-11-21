@@ -44,8 +44,15 @@
     --space-4: 16px;
 }
 
+/* Rolagem: o painel tem altura fixa (a do Premiere); cabeçalho e barra de status ficam
+   parados e só a área do meio (.content) rola. Sem "height" no html, o body crescia junto
+   com o conteúdo e nada rolava. O ui/panel.js também acerta a altura do .content pela
+   janela, caso o UXP ignore estas porcentagens. */
+html { height: 100%; }
+
 body {
     margin: 0;
+    overflow: hidden;
     padding: 0;
     background: var(--window-bg);
     background-color: var(--bg-primary);
@@ -84,12 +91,12 @@ h1 {
 /* ---------- área principal ---------- */
 
 .content {
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     padding: var(--space-3);
-    display: flex;
-    flex-direction: column;
 }
+.app-header, .status { flex-shrink: 0; }
 
 .card {
     background: var(--card-fill);
