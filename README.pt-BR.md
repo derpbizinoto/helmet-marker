@@ -16,7 +16,7 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 - Seleção com clique, Ctrl+clique e Shift+clique; selecionar tudo, limpar, inverter; selecionar antes/depois do marcador clicado ou do playhead.
 - Filtros por texto, cor, tipo, duração (pontual ou com duração) e In/Out da sequência.
 - Edição em massa de cor, nome, comentário (substituir ou acrescentar) e tipo; excluir com confirmação. Antes de aplicar, o painel mostra quantos marcadores vão mudar.
-- Mover selecionados X frames, ±1 frame, ±1 segundo, ou tudo a partir do playhead. Toda conta é em frames inteiros.
+- Mover selecionados X frames, ±1 frame, ±1 segundo, ou tudo a partir do playhead; levar um grupo de marcadores seguidos até o playhead, mantendo o espaço entre eles. Toda conta é em frames inteiros.
 - Exportar capítulos do YouTube (com avisos das regras do YouTube) e CSV.
 - Localizar e substituir em nomes e comentários; numeração automática com prefixo/sufixo ("Cena 01, Cena 02…").
 - Duplo clique no nome ou comentário da lista para editar ali mesmo.

@@ -336,6 +336,13 @@ var HMI18n = (function () {
         "A quantidade precisa ser um número inteiro entre 1 e 5000.": "The count must be a whole number between 1 and 5000.",
         "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
         // fase 3 (parte B)
+        "Levar ao playhead": "Move to playhead",
+        "\"Levar ao playhead\" põe o primeiro selecionado no playhead e leva os outros junto, com o mesmo espaço entre eles. Só funciona com marcadores seguidos (nenhum outro no meio).": "\"Move to playhead\" puts the first selected marker at the playhead and brings the others along, keeping the same spacing. Only works with markers that are next to each other (none in between).",
+        "Vai levar {0} marcador(es) ao playhead.": "Will move {0} marker(s) to the playhead.",
+        "Os marcadores selecionados precisam ser seguidos, sem nenhum outro marcador no meio (inclusive os escondidos pelos filtros). Nada foi alterado.": "The selected markers must be next to each other, with no other marker in between (including those hidden by the filters). Nothing was changed.",
+        "O Premiere não informou a posição do playhead.": "Premiere did not report the playhead position.",
+        "Helmet Marker: levar ao playhead": "Helmet Marker: move to playhead",
+        "Marcadores levados ao playhead: {0}. Um Ctrl+Z desfaz.": "Markers moved to the playhead: {0}. One Ctrl+Z undoes it.",
         "A duração precisa ser um número de 0 ou mais.": "The duration must be a number of 0 or more.",
         "Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):": "Latest scroll notices (area, ms, position, step, what the panel did):",
         "ponta": "edge (not multiplied)",

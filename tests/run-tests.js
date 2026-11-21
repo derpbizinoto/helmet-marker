@@ -258,6 +258,25 @@ test("todos os arquivos do painel são JavaScript válido", () => {
         assert.doesNotThrow(() => new vm.Script(read(rel), { filename: rel }), rel);
     });
 });
+test("levar ao playhead: bloco seguido vai para o playhead mantendo o espaço", () => {
+    const all = [{ key: "a", startFrame: 10 }, { key: "b", startFrame: 40 }, { key: "c", startFrame: 55 }, { key: "d", startFrame: 90 }];
+    const p = PL.planToPlayhead([all[1], all[2]], all, 200);
+    assert.deepStrictEqual(p.map((x) => [x.record.key, x.toFrame]), [["b", 200], ["c", 215]]);
+    // seleção fora de ordem: o primeiro no tempo é quem vai para o playhead
+    const q = PL.planToPlayhead([all[2], all[1]], all, 0);
+    assert.deepStrictEqual(q.map((x) => x.toFrame), [0, 15]);
+    // um só também vale; já no playhead = nada a fazer
+    assert.strictEqual(PL.planToPlayhead([all[3]], all, 5)[0].toFrame, 5);
+    assert.deepStrictEqual(PL.planToPlayhead([all[0]], all, 10), []);
+});
+test("levar ao playhead: trava quando há marcador no meio", () => {
+    const all = [{ key: "a", startFrame: 10 }, { key: "b", startFrame: 40 }, { key: "c", startFrame: 55 }];
+    assert.throws(() => PL.planToPlayhead([all[0], all[2]], all, 100), /seguidos/);
+    assert.throws(() => PL.planToPlayhead([], all, 100), /Selecione/);
+    assert.throws(() => PL.planToPlayhead([{ key: "z", startFrame: 1 }], all, 100), /não está mais/);
+    // não deixa ir antes do início (mesma regra do mover)
+    assert.throws(() => PL.planToPlayhead([all[1], all[2]], [{ key: "x", startFrame: 0 }].concat(all.slice(1)), -1), /playhead|antes/);
+});
 test("painel lê as listas por selValue (lista em branco vira a 1ª opção)", () => {
     const src = read("ui/panel.js");
     const ids = [...read("index.html").matchAll(/<select id="([^"]+)"/g)].map((m) => m[1]);

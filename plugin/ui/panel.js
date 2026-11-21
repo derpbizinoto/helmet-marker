@@ -480,6 +480,10 @@
 
         if (hasSeq()) partBPreviews(sel, none, change);
 
+        setText($("pvToPlayhead"), !sel.length ? none : (function () {
+            try { PL.checkConsecutive(sel, state.records); return tr("Vai levar {0} marcador(es) ao playhead.", sel.length); }
+            catch (e) { return "⚠ " + errText(e); }
+        })());
         if (state.afterPlayheadOn) setText($("pvMove"), tr("Vai mover todos os marcadores a partir do playhead."));
         else setText($("pvMove"), sel.length ? tr("Vai mover {0} marcador(es).", sel.length) : none);
 
@@ -579,6 +583,7 @@
         ["btnColor", "btnName", "btnComment", "btnType", "btnDelete"].forEach(function (id) { setEnabled(id, ready && n); });
         var canMove = ready && (n || state.afterPlayheadOn);
         ["btnMinusSec", "btnMinusFrame", "btnPlusFrame", "btnPlusSec", "btnMove"].forEach(function (id) { setEnabled(id, canMove); });
+        setEnabled("btnToPlayhead", ready && n);
         var canExport = ready && exportTargets().length > 0;
         ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy", "btnOtherSave", "btnOtherCopy"].forEach(function (id) { setEnabled(id, canExport); });
         setEnabled("btnImpOpen", !state.busy);
@@ -667,6 +672,14 @@
             }
             return PL.planShift(targets, deltaFrames);
         }, tr("Helmet Marker: mover marcadores"), N("Marcadores movidos: {0}. Um Ctrl+Z desfaz."));
+    }
+
+    function onToPlayhead() {
+        runEdit(async function () {
+            var sel = needSelection();
+            var ph = await P.getPlayheadFrame(state.ctx);
+            return PL.planToPlayhead(sel, state.records, ph);
+        }, tr("Helmet Marker: levar ao playhead"), N("Marcadores levados ao playhead: {0}. Um Ctrl+Z desfaz."));
     }
 
     function secondFrames() { return state.ctx ? PL.secondsToFrames(1, state.ctx.info) : 0; }
@@ -1866,6 +1879,7 @@
         on("btnPlusFrame", "click", function () { onShift(1); });
         on("btnPlusSec", "click", function () { onShift(secondFrames()); });
         on("btnMove", "click", onMoveField);
+        on("btnToPlayhead", "click", onToPlayhead);
         on("chipAfterPlayhead", "click", function () { state.afterPlayheadOn = !state.afterPlayheadOn; renderSelectionInfo(); });
 
         // exportar

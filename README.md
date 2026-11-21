@@ -16,7 +16,7 @@ Free and open source ([MIT license](LICENSE)).
 - Selection with click, Ctrl+click and Shift+click; select all, clear, invert; select before/after the clicked marker or the playhead.
 - Filters by text, color, type, duration (point or ranged) and the sequence In/Out.
 - Bulk edit of color, name, comment (replace or append) and type; delete with confirmation. Before applying, the panel shows how many markers will change.
-- Move selected markers by X frames, ±1 frame, ±1 second, or everything from the playhead on. All math is done in whole frames.
+- Move selected markers by X frames, ±1 frame, ±1 second, or everything from the playhead on; move a group of adjacent markers to the playhead, keeping their spacing. All math is done in whole frames.
 - Export YouTube chapters (with warnings for YouTube rules) and CSV.
 - Find and replace in names and comments; automatic numbering with prefix/suffix ("Scene 01, Scene 02…").
 - Double-click a name or comment in the list to edit it right there.

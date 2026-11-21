@@ -81,9 +81,34 @@
         return allRecords.filter(function (r) { return r.startFrame >= playheadFrame; });
     }
 
-    // 1 segundo de timecode = fps nominal em frames (30 em 29,97; 24 em 23,976).
+    // "Levar ao playhead": os selecionados precisam ser seguidos na sequência inteira (nenhum
+    // marcador não selecionado no meio, mesmo escondido pelos filtros); senão, ao mudar de lugar,
+    // eles "pulariam" por cima dos outros. allRecords em ordem de tempo (como a leitura devolve).
+    function checkConsecutive(selected, allRecords) {
+        if (!selected.length) throw new Error("Selecione marcadores na lista.");
+        var want = {};
+        selected.forEach(function (r) { want[r.key] = true; });
+        var idx = [];
+        allRecords.forEach(function (r, i) { if (want[r.key]) idx.push(i); });
+        if (idx.length !== selected.length) throw new Error("O marcador não está mais na lista. Nada foi alterado.");
+        if (idx[idx.length - 1] - idx[0] + 1 !== idx.length) {
+            throw new Error("Os marcadores selecionados precisam ser seguidos, sem nenhum outro marcador no meio (inclusive os escondidos pelos filtros). Nada foi alterado.");
+        }
+        return idx.map(function (i) { return allRecords[i]; });
+    }
+
+    // Move o bloco selecionado para o primeiro ficar no playhead; o espaço entre eles não muda.
+    function planToPlayhead(selected, allRecords, playheadFrame) {
+        var block = checkConsecutive(selected, allRecords);
+        playheadFrame = Number(playheadFrame);
+        if (!isFinite(playheadFrame) || Math.round(playheadFrame) !== playheadFrame) {
+            throw new Error("O Premiere não informou a posição do playhead.");
+        }
+        return planShift(block, playheadFrame - block[0].startFrame);
+    }
+
     // Segundos (podem ter casas decimais, ex.: 2,5) para frames inteiros, arredondando.
-    // Usa os frames nominais por segundo (30 em 29,97), como o timecode.
+    // 1 segundo de timecode = fps nominal em frames (30 em 29,97; 24 em 23,976).
     function secondsToFrames(seconds, info) {
         return Math.round(Number(seconds) * info.nominal);
     }
@@ -444,6 +469,8 @@
         planType: planType,
         planShift: planShift,
         afterPlayhead: afterPlayhead,
+        checkConsecutive: checkConsecutive,
+        planToPlayhead: planToPlayhead,
         secondsToFrames: secondsToFrames,
         planRemove: planRemove,
         replaceText: replaceText,
