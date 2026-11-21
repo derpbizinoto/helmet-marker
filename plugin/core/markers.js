@@ -58,51 +58,6 @@
         return { index: index, name: "?", label: "Cor " + index, hex: "#B9A8CB" };
     }
 
-    // ---------- seleção (fase 0: clique e Ctrl+clique) ----------
-    // selected: objeto { chave: true }. Devolve um novo objeto.
-    function clickSelect(selected, key, additive) {
-        var next = {};
-        if (additive) {
-            Object.keys(selected || {}).forEach(function (k) { next[k] = true; });
-            if (next[key]) delete next[key]; else next[key] = true;
-        } else {
-            next[key] = true;
-        }
-        return next;
-    }
-
-    // Mantém só as chaves que ainda existem depois de reler os marcadores.
-    function pruneSelection(selected, records) {
-        var exists = {};
-        records.forEach(function (r) { exists[r.key] = true; });
-        var next = {};
-        Object.keys(selected || {}).forEach(function (k) { if (exists[k]) next[k] = true; });
-        return next;
-    }
-
-    function selectedRecords(selected, records) {
-        return records.filter(function (r) { return selected && selected[r.key]; });
-    }
-
-    // ---------- mover ----------
-    // Calcula os frames de destino. Recusa (em vez de "encostar" em 0) se algum marcador
-    // ficaria antes do início da sequência — nada é alterado pela metade.
-    function planMove(records, deltaFrames) {
-        deltaFrames = Number(deltaFrames);
-        if (!isFinite(deltaFrames) || Math.round(deltaFrames) !== deltaFrames) {
-            throw new Error("O deslocamento precisa ser um número inteiro de frames.");
-        }
-        var plan = records.map(function (r) {
-            return { record: r, fromFrame: r.startFrame, toFrame: r.startFrame + deltaFrames };
-        });
-        var bad = plan.filter(function (p) { return p.toFrame < 0; });
-        if (bad.length) {
-            throw new Error("Mover " + deltaFrames + " frames deixaria " + bad.length +
-                " marcador(es) antes do início da sequência. Nada foi alterado.");
-        }
-        return plan;
-    }
-
     // ---------- marcadores de teste ----------
     // Plano para criar N marcadores espaçados de "step" frames, começando em startFrame,
     // com as cores em rodízio. Só dados; quem cria é a camada premiere/.
@@ -142,10 +97,6 @@
         buildColorTable: buildColorTable,
         colorFor: colorFor,
         COLOR_INFO: COLOR_INFO,
-        clickSelect: clickSelect,
-        pruneSelection: pruneSelection,
-        selectedRecords: selectedRecords,
-        planMove: planMove,
         planTestMarkers: planTestMarkers
     };
 });

@@ -82,8 +82,10 @@
     }
 
     // 1 segundo de timecode = fps nominal em frames (30 em 29,97; 24 em 23,976).
+    // Segundos (podem ter casas decimais, ex.: 2,5) para frames inteiros, arredondando.
+    // Usa os frames nominais por segundo (30 em 29,97), como o timecode.
     function secondsToFrames(seconds, info) {
-        return Math.round(Number(seconds)) * info.nominal;
+        return Math.round(Number(seconds) * info.nominal);
     }
 
     function planRemove(records) {

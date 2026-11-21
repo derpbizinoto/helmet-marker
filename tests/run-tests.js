@@ -206,28 +206,6 @@ test("buildColorTable aceita vazio e ignora não-números", () => {
 test("colorFor com índice desconhecido", () => {
     assert.strictEqual(M.colorFor([], 9).label, "Cor 9");
 });
-test("seleção: clique, Ctrl+clique e limpeza após reler", () => {
-    let s = M.clickSelect({}, "a", false);
-    s = M.clickSelect(s, "b", true);
-    assert.deepStrictEqual(Object.keys(s).sort(), ["a", "b"]);
-    s = M.clickSelect(s, "a", true);
-    assert.deepStrictEqual(Object.keys(s), ["b"]);
-    s = M.clickSelect(s, "c", false);
-    assert.deepStrictEqual(Object.keys(s), ["c"]);
-    const recs = [{ key: "a" }, { key: "b" }];
-    assert.deepStrictEqual(M.pruneSelection({ a: true, z: true }, recs), { a: true });
-    assert.strictEqual(M.selectedRecords({ b: true }, recs)[0].key, "b");
-});
-test("planMove em frames inteiros", () => {
-    const p = M.planMove([{ startFrame: 5 }, { startFrame: 100 }], 10);
-    assert.deepStrictEqual(p.map((x) => x.toFrame), [15, 110]);
-    const back = M.planMove([{ startFrame: 10 }], -10);
-    assert.strictEqual(back[0].toFrame, 0);
-});
-test("planMove recusa ir antes do início e frações", () => {
-    assert.throws(() => M.planMove([{ startFrame: 5 }], -6), /antes do início/);
-    assert.throws(() => M.planMove([{ startFrame: 5 }], 1.5), /inteiro/);
-});
 test("planTestMarkers", () => {
     const p = M.planTestMarkers(500, 12, 0, null, "Teste ");
     assert.strictEqual(p.length, 500);
@@ -261,6 +239,21 @@ const RECS = [
     rec("d", 300, { name: "Créditos", comments: "fim", colorIndex: 2 })
 ];
 const keysOf = (sel) => Object.keys(sel).sort();
+test("planShift em frames inteiros", () => {
+    const p = PL.planShift([{ startFrame: 5 }, { startFrame: 100 }], 10);
+    assert.deepStrictEqual(p.map((x) => x.toFrame), [15, 110]);
+    const back = PL.planShift([{ startFrame: 10 }], -10);
+    assert.strictEqual(back[0].toFrame, 0);
+    assert.deepStrictEqual(PL.planShift([{ startFrame: 10 }], 0), []);
+});
+test("planShift recusa ir antes do início e frações", () => {
+    assert.throws(() => PL.planShift([{ startFrame: 5 }], -6), /antes do início/);
+    assert.throws(() => PL.planShift([{ startFrame: 5 }], 1.5), /inteiro/);
+});
+test("painel nunca escreve num campo por fieldText (só lê)", () => {
+    const src = read("ui/panel.js");
+    assert.ok(!/fieldText\([^)]*\)\s*=[^=]/.test(src), "use setField para escrever");
+});
 
 test("filtro de texto ignora maiúsculas e acentos, em nome e comentário", () => {
     const f = S.emptyFilters();
@@ -344,6 +337,8 @@ test("mover: frames inteiros, ±1 s pelo fps nominal e após o playhead", () => 
     assert.strictEqual(PL.secondsToFrames(1, T.rateInfo(NTSC["29.97"])), 30);
     assert.strictEqual(PL.secondsToFrames(1, T.rateInfo(NTSC["23.976"])), 24);
     assert.strictEqual(PL.secondsToFrames(1, T.rateInfo(25)), 25);
+    assert.strictEqual(PL.secondsToFrames(2.5, T.rateInfo(25)), 63);       // 62,5 arredonda para 63
+    assert.strictEqual(PL.secondsToFrames(0.5, T.rateInfo(NTSC["29.97"])), 15);
     assert.deepStrictEqual(PL.afterPlayhead(RECS, 200).map((r) => r.key), ["c", "d"]);
     assert.deepStrictEqual(PL.planRemove([RECS[0]]), [{ record: RECS[0], remove: true }]);
 });
@@ -798,7 +793,7 @@ test("nenhuma tradução sobrando", () => {
 test("trMsg traduz erros com partes variáveis do core", () => {
     const ctx = loadI18n("en");
     let msg = "";
-    try { M.planMove([{ startFrame: 5 }], -6); } catch (e) { msg = e.message; }
+    try { PL.planShift([{ startFrame: 5 }], -6); } catch (e) { msg = e.message; }
     assert.strictEqual(ctx.trMsg(msg), "Moving -6 frames would put 1 marker(s) before the start of the sequence. Nothing was changed.");
     try { T.rateInfo(0); } catch (e) { msg = e.message; }
     assert.strictEqual(ctx.trMsg(msg), "Invalid frame rate: 0");

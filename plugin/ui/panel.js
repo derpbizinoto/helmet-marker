@@ -81,6 +81,7 @@
     function fieldText(id) { var v = $(id).value; return v === null || v === undefined ? "" : String(v); }
     // Número digitado; campo vazio vira NaN (as checagens do core recusam com mensagem), nunca 0.
     function numField(id) { var t = fieldText(id).trim().replace(",", "."); return t === "" ? NaN : Number(t); }
+    function setField(id, text) { $(id).value = text === null || text === undefined ? "" : String(text); }
     function now() { return new Date().toLocaleTimeString(); }
 
     // ---------- mensagens ----------
@@ -257,7 +258,7 @@
         // Durante a edição numa célula, redesenhar apagaria o campo: espera terminar.
         if (state.editing) return;
         var t0 = Date.now();
-        $("seqInfo").textContent = seqLine();
+        setText($("seqInfo"), seqLine());
         buildColorControls();
         renderSavedList(false);
 
@@ -267,11 +268,11 @@
 
         var empty = $("empty");
         if (!hasSeq()) {
-            empty.textContent = tr("Abra uma sequência na timeline e clique em Atualizar.");
+            setText(empty, tr("Abra uma sequência na timeline e clique em Atualizar."));
         } else if (!state.records.length) {
-            empty.textContent = tr("Esta sequência não tem marcadores. Crie alguns com M na timeline ou use as ferramentas de teste no fim do painel.");
+            setText(empty, tr("Esta sequência não tem marcadores. Crie alguns com M na timeline ou use as ferramentas de teste no fim do painel."));
         } else {
-            empty.textContent = tr("Nenhum marcador passa pelos filtros.");
+            setText(empty, tr("Nenhum marcador passa pelos filtros."));
         }
         show(empty, !state.visible.length);
 
@@ -689,8 +690,12 @@
     // ---------- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------
     function durationFrames() {
         var v = numField("durValue");
+        if ($("durUnit").value === "seconds") {
+            if (!isFinite(v) || v < 0) throw new Error("A duração precisa ser um número de 0 ou mais.");
+            return PL.secondsToFrames(v, state.ctx.info);
+        }
         if (!isFinite(v) || Math.round(v) !== v || v < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
-        return $("durUnit").value === "seconds" ? PL.secondsToFrames(v, state.ctx.info) : v;
+        return v;
     }
 
     function onDuration() {
@@ -846,11 +851,11 @@
     function onTplPick() {
         var tpl = currentTemplate();
         if (tpl) {
-            fieldText("tplName") = tpl.name;
-            fieldText("tplMarkerName") = tpl.markerName || "";
+            setField("tplName", tpl.name);
+            setField("tplMarkerName", tpl.markerName);
             $("tplColor").value = typeof tpl.color === "number" ? String(tpl.color) : "keep";
             $("tplType").value = tpl.type || "keep";
-            fieldText("tplComment") = tpl.comments || "";
+            setField("tplComment", tpl.comments);
             $("tplCommentMode").value = tpl.commentMode || "replace";
         }
         renderPreviews();
@@ -904,7 +909,7 @@
             state.savedSels = list;
             fillSelect($("savedSel"), list, "s:", tr("Nenhuma seleção salva"));
             $("savedSel").value = "s:" + sel.name;
-            fieldText("savedName") = "";
+            setField("savedName", "");
             updateButtons();
             setStatus(tr("Seleção salva: {0} ({1} marcador(es)).", sel.name, sel.keys.length), "ok");
         } catch (e) {
@@ -1104,7 +1109,7 @@
     function clearFilters() {
         state.filters = S.emptyFilters();
         state.inOutOn = false;
-        fieldText("filterText") = "";
+        setField("filterText", "");
         $("filterType").value = "any";   // (o UXP exige <option> com value não vazio)
         $("filterDuration").value = "all";
         state.colorsSig = "";   // redesenha os chips sem "on"
@@ -1248,7 +1253,7 @@
             var file = await P.openTextFile(["csv", "tsv", "txt", "srt", "edl", "json"]);
             if (!file) { setStatus(tr("Abertura cancelada."), "warn"); return; }
             state.impFileName = file.name;
-            $("impText").value = file.text;
+            setField("impText", file.text);
             setText($("impFile"), file.name);
             setStatus(tr("Arquivo aberto: {0}. Confira a prévia e clique em Importar.", file.name), "ok");
             renderImportPreview();
@@ -1259,7 +1264,7 @@
     }
 
     function onImpClear() {
-        $("impText").value = "";
+        setField("impText", "");
         state.impFileName = "";
         setText($("impFile"), "");
         renderImportPreview();
@@ -1575,7 +1580,6 @@
         read(name, true).catch(showError);
     }
 
-    // ---------- altura da área que rola ----------
     // ---------- cartões recolhíveis ----------
     // O UXP recalcula o layout do painel inteiro a cada mudança na tela; cartão fechado
     // (display: none) sai dessa conta. Clicar no título abre/fecha; o painel lembra.
@@ -1636,6 +1640,7 @@
         }, 100);
     }
 
+    // ---------- altura da área que rola ----------
     function fitContent() {
         var h = window.innerHeight;
         if (!h) return;
@@ -1645,8 +1650,8 @@
 
     // ---------- rolagem com a roda do mouse ----------
     // A rolagem nativa do painel no Premiere é lenta. Se o UXP entregar o evento "wheel" (a doc
-    // não diz), o painel rola sozinho N vezes mais. Se não entregar, nada muda. O Diagnóstico
-    // mostra se o evento chegou.
+    // não diz; no 26.5.2 não entrega), o painel rola sozinho N vezes mais. Senão vale o plano B
+    // abaixo. O Diagnóstico mostra se o evento chegou.
     var SCROLL_KEY = "helmetmarker.scrollSpeed";
     var SCROLLERS = ["list", "ytPreview", "content"];   // de dentro para fora
 
@@ -1709,10 +1714,9 @@
         return amp.x >= r.right - SCROLLBAR_ZONE && amp.x <= r.right + 4 && amp.y >= r.top && amp.y <= r.bottom;
     }
 
-    // Nas pontas (começo ou fim), a rolagem do Premiere passa do limite e volta um pouco; o
-    // painel multiplicava essa volta (a "engasgada"). Agora, logo depois de encostar numa ponta,
-    // um recuo pequeno é desfeito. A ponta é a que o próprio Premiere aceita (o painel pede um
-    // valor e lê de volta), não uma conta nossa: a conta com scrollHeight deixava sobrar um pouco.
+    // Cada aviso de rolagem pequeno é multiplicado, menos: os causados pelo próprio painel, os
+    // de redesenho da lista, os da barra de rolagem, os saltos grandes e o balanço logo depois
+    // de encostar numa ponta (ver EDGE_QUIET_MS). Cada decisão vai para o registro do Diagnóstico.
     function onScrollAmplify(e) {
         var el = e.currentTarget || e.target;
         if (!el || !el.id) return;
@@ -1802,7 +1806,7 @@
             renderTemplateList();
             renderSavedList(true);
             if (hasSeq()) render(); else renderDiagnostics();
-            $("seqInfo").textContent = seqLine();
+            setText($("seqInfo"), seqLine());
         });
 
         on("btnRefresh", "click", function () { readAndReport(N("botão Atualizar")); });

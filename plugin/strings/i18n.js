@@ -336,6 +336,7 @@ var HMI18n = (function () {
         "A quantidade precisa ser um número inteiro entre 1 e 5000.": "The count must be a whole number between 1 and 5000.",
         "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
         // fase 3 (parte B)
+        "A duração precisa ser um número de 0 ou mais.": "The duration must be a number of 0 or more.",
         "Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):": "Latest scroll notices (area, ms, position, step, what the panel did):",
         "ponta": "edge (not multiplied)",
         "multiplicou": "multiplied",
