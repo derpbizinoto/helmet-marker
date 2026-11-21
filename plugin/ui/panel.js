@@ -1427,8 +1427,14 @@
     // Plano B (Premiere 26.5.2 não entrega "wheel"): quando a área rola sozinha um passo
     // pequeno, o painel soma (N − 1) passos iguais na mesma direção. Com o botão do mouse
     // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
-    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false };
+    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, edge: {} };
+    var EDGE_MS = 250;
 
+    function maxScroll(el) { return Math.max(0, (el.scrollHeight || 0) - (el.clientHeight || 0)); }
+
+    // Nas pontas (começo ou fim), a rolagem do Premiere passa do limite e volta um pouco; antes o
+    // painel ainda multiplicava essa volta (a "engasgada"). Agora: o destino é limitado às
+    // pontas e, logo depois de encostar numa ponta, um recuo pequeno é desfeito (fica na ponta).
     function onScrollAmplify(e) {
         var el = e.currentTarget || e.target;
         if (!el || !el.id) return;
@@ -1441,9 +1447,28 @@
         if (state.wheelSeen || state.scrollSpeed <= 1 || amp.mouseDown || last === undefined) return;
         var d = cur - last;
         if (!d || Math.abs(d) > 200) return;                          // salto grande: não é a roda
+
+        var edge = amp.edge[id], now = Date.now();
+        if (edge && now - edge.at < EDGE_MS) {
+            // recuo logo depois de encostar na ponta: é o "volta um pouco" do Premiere
+            if ((d > 0) !== (edge.dir > 0) && Math.abs(d) <= edge.step * 3) {
+                setScroll(el, id, edge.pos);
+                return;
+            }
+        }
+
+        var max = maxScroll(el);
+        var target = Math.max(0, Math.min(max, cur + d * (state.scrollSpeed - 1)));
+        if (target !== cur) setScroll(el, id, target);
+        if (target <= 0 || target >= max) amp.edge[id] = { at: now, dir: d, step: Math.abs(d), pos: target };
+        else amp.edge[id] = null;
+    }
+
+    function setScroll(el, id, pos) {
         amp.own[id] = true;
-        el.scrollTop = cur + d * (state.scrollSpeed - 1);
-        if (el.scrollTop === cur) amp.own[id] = false;                // já estava no fim
+        var before = el.scrollTop;
+        el.scrollTop = pos;
+        if (el.scrollTop === before) amp.own[id] = false;             // não mexeu: não vem aviso
         amp.last[id] = el.scrollTop;
     }
 
