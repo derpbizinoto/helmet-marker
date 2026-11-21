@@ -1683,20 +1683,21 @@
     // Plano B (Premiere 26.5.2 não entrega "wheel"): quando a área rola sozinha um passo
     // pequeno, o painel soma (N − 1) passos iguais na mesma direção. Com o botão do mouse
     // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
-    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, edge: {}, typ: {}, x: -1, y: -1 };
-    // Recuo logo depois de encostar na ponta:
-    //  - até EDGE_FIRST_MS da primeira batida, qualquer recuo é desfeito (é o Premiere voltando);
-    //  - depois, até EDGE_MAX_MS, só recuos menores que um passo normal da roda (o resto da
-    //    animação dele). Um passo do tamanho normal é a pessoa rolando de volta: passa.
-    // Antes a comparação era com o último passo antes da ponta, que costuma ser minúsculo (o
-    // pedaço que faltava): o recuo passava do limite e a engasgada voltava.
-    var EDGE_FIRST_MS = 300;
-    var EDGE_MAX_MS = 900;
+    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, touch: {}, x: -1, y: -1 };
+    // Balanço na ponta: ao chegar no começo ou no fim, o Premiere faz sozinho um "elástico" de
+    // poucos pixels (−10, −19, +10, +29…), até ~1 s depois (registro do Diagnóstico, 26.5.2).
+    // Na velocidade Normal ele quase não aparece; multiplicado virava a engasgada. Então, logo
+    // depois de a área encostar numa ponta, movimentos pequenos não são multiplicados.
+    var EDGE_QUIET_MS = 1500;
+    var EDGE_SMALL_PX = 60;
     var scrollLog = [];       // últimos avisos de rolagem (Diagnóstico), para achar engasgadas
     function logScroll(id, cur, d, what) {
         scrollLog.push({ t: Date.now(), id: id, cur: Math.round(cur), d: Math.round(d), what: what });
         if (scrollLog.length > 8) scrollLog.shift();
     }
+    // Fim da área. (A conta pode sair um pouco antes do fim real no UXP; por isso só serve
+    // para saber se encostou, nunca para limitar a rolagem.)
+    function maxScroll(el) { return Math.max(0, (el.scrollHeight || 0) - (el.clientHeight || 0)); }
     var SCROLLBAR_ZONE = 24;   // px junto à borda direita: área da barra de rolagem
 
     // Arrastar a barra de rolagem também gera passos pequenos, e o Premiere não entrega o clique
@@ -1719,43 +1720,22 @@
         if (!state.scrollSeen) { state.scrollSeen = true; renderDiagnostics(); }
         var cur = el.scrollTop, last = amp.last[id];
         amp.last[id] = cur;
+        // encostou numa ponta (em qualquer aviso, inclusive os nossos): marca a hora
+        if (cur <= 0 || cur >= maxScroll(el) - 2) amp.touch[id] = Date.now();
         if (amp.own[id]) { amp.own[id] = false; return; }          // rolagem feita por nós
         if (amp.quietUntil && amp.quietUntil[id] > Date.now()) return;   // lista sendo redesenhada
         if (state.wheelSeen || state.scrollSpeed <= 1 || amp.mouseDown || last === undefined) return;
         var d = cur - last;
-        if (nearScrollbar(el)) { amp.edge[id] = null; logScroll(id, cur, d, "barra"); return; }   // arrastando a barra
+        if (nearScrollbar(el)) { logScroll(id, cur, d, "barra"); return; }   // arrastando a barra
         if (!d || Math.abs(d) > 200) { logScroll(id, cur, d, "ignorou"); return; }               // salto grande: não é a roda
 
-        var edge = amp.edge[id], now = Date.now();
-        if (edge && now - edge.first < EDGE_MAX_MS) {
-            var typical = amp.typ[id] || Math.abs(d);
-            var bounce = now - edge.first < EDGE_FIRST_MS || Math.abs(d) < typical * 0.6;
-            if ((d > 0) !== (edge.dir > 0) && bounce) {
-                // o "volta um pouco" do Premiere: fica na ponta (pode vir em vários avisos seguidos)
-                setScroll(el, id, edge.pos);
-                logScroll(id, cur, d, "segurou");
-                return;
-            }
-            if ((d > 0) === (edge.dir > 0)) {
-                // continuou na direção da ponta: só confirma a ponta
-                edge.pos = setScroll(el, id, cur + d * (state.scrollSpeed - 1));
-                logScroll(id, cur, d, "ponta");
-                return;
-            }
-            amp.edge[id] = null;                                      // rolando de volta de verdade
+        var now = Date.now();
+        if (amp.touch[id] && now - amp.touch[id] < EDGE_QUIET_MS && Math.abs(d) < EDGE_SMALL_PX) {
+            logScroll(id, cur, d, "ponta");                           // balanço do Premiere: deixa como está
+            return;
         }
-
-        var want = Math.max(0, cur + d * (state.scrollSpeed - 1));
-        var got = setScroll(el, id, want);
-        // encostou numa ponta: o Premiere não deixou ir até onde pedimos (ou chegou no 0)
-        if (Math.abs(got - want) > 1 || got <= 0) {
-            amp.edge[id] = { first: now, dir: d, pos: got };
-            logScroll(id, cur, d, "ponta");
-        } else {
-            amp.edge[id] = null;
-            amp.typ[id] = amp.typ[id] ? amp.typ[id] * 0.7 + Math.abs(d) * 0.3 : Math.abs(d);   // passo normal
-            logScroll(id, cur, d, "multiplicou");
-        }
+        setScroll(el, id, Math.max(0, cur + d * (state.scrollSpeed - 1)));
+        logScroll(id, cur, d, "multiplicou");
     }
 
     function setScroll(el, id, pos) {

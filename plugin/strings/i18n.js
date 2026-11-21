@@ -337,8 +337,7 @@ var HMI18n = (function () {
         "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
         // fase 3 (parte B)
         "Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):": "Latest scroll notices (area, ms, position, step, what the panel did):",
-        "segurou": "held",
-        "ponta": "edge",
+        "ponta": "edge (not multiplied)",
         "multiplicou": "multiplied",
         "barra": "scrollbar",
         "ignorou": "ignored",
