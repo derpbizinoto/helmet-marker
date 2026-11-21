@@ -790,7 +790,7 @@
     // Duplo clique no nome ou no comentário abre um campo na própria linha.
     // Enter (ou clicar fora) salva numa transação; Esc cancela.
     function startInlineEdit(row, key, field) {
-        if (state.busy || !hasSeq()) return;
+        if (state.busy || state.editing || !hasSeq()) return;
         var rec = null;
         state.records.forEach(function (r) { if (r.key === key) rec = r; });
         if (!rec) return;
@@ -847,6 +847,20 @@
         return null;
     }
 
+    // No Premiere, o segundo clique rápido pode chegar só como "dblclick" (e não como "click"),
+    // então o duplo clique é reconhecido pelos dois caminhos. Se um já abriu o campo, o outro
+    // não faz nada.
+    function onListDoubleClick(ev) {
+        if (state.editing || (ev.target && ev.target.tagName === "INPUT")) return;
+        var el = ev.target;
+        while (el && el !== this && !(el.getAttribute && el.getAttribute("data-key"))) el = el.parentNode;
+        if (!el || el === this) return;
+        var col = columnOf(ev.target, el);
+        if (!col || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+        state.lastClick = null;
+        startInlineEdit(el, el.getAttribute("data-key"), col);
+    }
+
     // ---------- lista: clique ----------
     function onListClick(ev) {
         if (ev.target && ev.target.tagName === "INPUT") return;   // clique dentro do campo de edição
@@ -859,7 +873,8 @@
         var col = columnOf(ev.target, el);
         var t = Date.now();
         var last = state.lastClick;
-        var isDouble = !mods.ctrl && !mods.shift && col && last && last.key === key && last.col === col && t - last.t < DOUBLE_CLICK_MS;
+        var isDouble = !mods.ctrl && !mods.shift && col &&
+            ((last && last.key === key && last.col === col && t - last.t < DOUBLE_CLICK_MS) || ev.detail >= 2);
         state.lastClick = isDouble ? null : { key: key, col: col, t: t };
         if (isDouble) { startInlineEdit(el, key, col); return; }
 
@@ -1028,6 +1043,7 @@
 
         on("btnRefresh", "click", function () { readAndReport(N("botão Atualizar")); });
         on("list", "click", onListClick);
+        on("list", "dblclick", onListDoubleClick);
 
         // filtros
         on("filterText", "input", function () { state.filters.text = $("filterText").value; filtersChanged(); });
