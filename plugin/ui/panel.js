@@ -79,6 +79,8 @@
     function setClass(el, cls) { if (el.className !== cls) el.className = cls; }
     // No Premiere 26.5.2 o <textarea> vazio devolve value = null (não ""): sempre ler por aqui.
     function fieldText(id) { var v = $(id).value; return v === null || v === undefined ? "" : String(v); }
+    // Número digitado; campo vazio vira NaN (as checagens do core recusam com mensagem), nunca 0.
+    function numField(id) { var t = fieldText(id).trim().replace(",", "."); return t === "" ? NaN : Number(t); }
     function now() { return new Date().toLocaleTimeString(); }
 
     // ---------- mensagens ----------
@@ -449,13 +451,13 @@
         var none = tr("Selecione marcadores na lista.");
         var change = N("Vai alterar {0} marcador(es).");
         setText($("pvColor"), sel.length ? previewText(function () { return PL.planColor(sel, $("editColor").value).length; }, change) : none);
-        setText($("pvName"), sel.length ? previewText(function () { return PL.planName(sel, $("editName").value).length; }, change) : none);
-        setText($("pvComment"), sel.length ? previewText(function () { return PL.planComments(sel, $("editComment").value, $("editCommentMode").value).length; }, change) : none);
+        setText($("pvName"), sel.length ? previewText(function () { return PL.planName(sel, fieldText("editName")).length; }, change) : none);
+        setText($("pvComment"), sel.length ? previewText(function () { return PL.planComments(sel, fieldText("editComment"), $("editCommentMode").value).length; }, change) : none);
         setText($("pvType"), sel.length ? previewText(function () { return PL.planType(sel, $("editType").value).length; }, change) : none);
         setText($("pvDelete"), sel.length ? tr("Vai excluir {0} marcador(es).", sel.length) : none);
 
         setText($("pvReplace"), sel.length ? previewText(function () {
-            return PL.planReplace(sel, $("findText").value, $("replaceText").value, $("findFields").value, state.matchCase).length;
+            return PL.planReplace(sel, fieldText("findText"), fieldText("replaceText"), $("findFields").value, state.matchCase).length;
         }, change) : none);
         setText($("pvNumber"), sel.length ? numberPreview(sel) : none);
         var tpl = currentTemplate();
@@ -473,11 +475,11 @@
 
     function numberOptions() {
         return {
-            prefix: $("numPrefix").value,
-            start: Number($("numStart").value),
-            step: Number($("numStep").value),
-            digits: Number($("numDigits").value),
-            suffix: $("numSuffix").value
+            prefix: fieldText("numPrefix"),
+            start: numField("numStart"),
+            step: numField("numStep"),
+            digits: numField("numDigits"),
+            suffix: fieldText("numSuffix")
         };
     }
 
@@ -534,6 +536,13 @@
         lines.push(tr("Aviso de rolagem no painel: {0}", state.scrollSeen ? tr("recebido") : tr("ainda não recebido")));
         lines.push(tr("Última atualização da lista: {0} ms", state.lastRenderMs));
         lines.push(tr("Maior travada do painel (últimos 30 s): {0} ms", lagProbe.max));
+        if (scrollLog.length) {
+            var t0 = scrollLog[0].t;
+            lines.push(tr("Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):"));
+            scrollLog.forEach(function (e) {
+                lines.push("  " + e.id + "  +" + (e.t - t0) + "  " + e.cur + "  " + (e.d > 0 ? "+" : "") + e.d + "  " + tr(e.what));
+            });
+        }
         var box = $("diag");
         while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
         lines.forEach(function (l, i) {
@@ -621,11 +630,11 @@
             tr("Helmet Marker: mudar cor"), N("Cor alterada em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
     function onName() {
-        runEdit(function () { return PL.planName(needSelection(), $("editName").value); },
+        runEdit(function () { return PL.planName(needSelection(), fieldText("editName")); },
             tr("Helmet Marker: mudar nome"), N("Nome alterado em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
     function onComment() {
-        runEdit(function () { return PL.planComments(needSelection(), $("editComment").value, $("editCommentMode").value); },
+        runEdit(function () { return PL.planComments(needSelection(), fieldText("editComment"), $("editCommentMode").value); },
             tr("Helmet Marker: mudar comentário"), N("Comentário alterado em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
     function onType() {
@@ -650,7 +659,8 @@
     function secondFrames() { return state.ctx ? PL.secondsToFrames(1, state.ctx.info) : 0; }
 
     function onMoveField() {
-        var v = Number($("moveFrames").value);
+        if (!fieldText("moveFrames").trim()) { setStatus(tr("Digite quantos frames deslocar (negativo volta)."), "warn"); return; }
+        var v = numField("moveFrames");
         if (!isFinite(v) || Math.round(v) !== v) { showError(new Error("O deslocamento precisa ser um número inteiro de frames.")); return; }
         if (!v) { setStatus(tr("Digite quantos frames deslocar (negativo volta)."), "warn"); return; }
         onShift(v);
@@ -678,7 +688,7 @@
 
     // ---------- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------
     function durationFrames() {
-        var v = Number($("durValue").value);
+        var v = numField("durValue");
         if (!isFinite(v) || Math.round(v) !== v || v < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
         return $("durUnit").value === "seconds" ? PL.secondsToFrames(v, state.ctx.info) : v;
     }
@@ -701,7 +711,7 @@
         runEdit(async function () {
             var sel = needSelection();
             var cuts = await P.getCutFrames(state.ctx, $("snapTracks").value);
-            return PL.planSnap(sel, cuts, Number($("snapMax").value));
+            return PL.planSnap(sel, cuts, numField("snapMax"));
         }, tr("Helmet Marker: encaixar no corte"), N("Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz."));
     }
 
@@ -713,13 +723,13 @@
     // Remover e mesclar excluem marcadores, então pedem confirmação (como o Excluir).
     function onClean(kind) {
         try {
-            var plan = kind === "merge" ? PL.planMerge(needSelection(), Number($("cleanTol").value))
-                : PL.planDedupe(needSelection(), Number($("cleanTol").value));
+            var plan = kind === "merge" ? PL.planMerge(needSelection(), numField("cleanTol"))
+                : PL.planDedupe(needSelection(), numField("cleanTol"));
             var n = cleanCounts(plan).removed;
             if (!n) { setStatus(tr("Nenhum duplicado ou marcador próximo nessa distância."), "warn"); return; }
             state.confirm = function () {
                 runEdit(function () {
-                    var tol = Number($("cleanTol").value);
+                    var tol = numField("cleanTol");
                     return kind === "merge" ? PL.planMerge(needSelection(), tol) : PL.planDedupe(needSelection(), tol);
                 }, kind === "merge" ? tr("Helmet Marker: mesclar marcadores") : tr("Helmet Marker: remover duplicados"),
                 kind === "merge" ? N("Mesclagem feita: {0} alteração(ões). Um Ctrl+Z desfaz.") : N("Duplicados removidos: {0}. Um Ctrl+Z desfaz."));
@@ -740,7 +750,7 @@
         setText($("pvSnap"), sel.length ? tr("Os cortes são lidos ao clicar.") : none);
         setText($("pvClean"), !sel.length ? none : (function () {
             try {
-                var tol = Number($("cleanTol").value);
+                var tol = numField("cleanTol");
                 var d = cleanCounts(PL.planDedupe(sel, tol)).removed;
                 if (!d) return tr("Nenhum duplicado ou marcador próximo nessa distância.");
                 return tr("Grupos encontrados: vai excluir {0} marcador(es).", d);
@@ -754,7 +764,7 @@
         updateButtons();
         var message;
         try {
-            var plan = M.planTestMarkers(Number($("testCount").value), Number($("testStep").value), 0, null, tr("Teste") + " ");
+            var plan = M.planTestMarkers(numField("testCount"), numField("testStep"), 0, null, tr("Teste") + " ");
             var t0 = Date.now();
             P.addMarkers(state.ctx, plan, tr("Helmet Marker: criar marcadores de teste"));
             message = tr("{0} marcadores criados em {1} ms. Um Ctrl+Z desfaz todos.", plan.length, Date.now() - t0);
@@ -770,7 +780,7 @@
     // ---------- fase 2: localizar, numerar, modelos ----------
     function onReplace() {
         runEdit(function () {
-            return PL.planReplace(needSelection(), $("findText").value, $("replaceText").value, $("findFields").value, state.matchCase);
+            return PL.planReplace(needSelection(), fieldText("findText"), fieldText("replaceText"), $("findFields").value, state.matchCase);
         }, tr("Helmet Marker: localizar e substituir"), N("Texto substituído em {0} marcador(es). Um Ctrl+Z desfaz."));
     }
 
@@ -836,11 +846,11 @@
     function onTplPick() {
         var tpl = currentTemplate();
         if (tpl) {
-            $("tplName").value = tpl.name;
-            $("tplMarkerName").value = tpl.markerName || "";
+            fieldText("tplName") = tpl.name;
+            fieldText("tplMarkerName") = tpl.markerName || "";
             $("tplColor").value = typeof tpl.color === "number" ? String(tpl.color) : "keep";
             $("tplType").value = tpl.type || "keep";
-            $("tplComment").value = tpl.comments || "";
+            fieldText("tplComment") = tpl.comments || "";
             $("tplCommentMode").value = tpl.commentMode || "replace";
         }
         renderPreviews();
@@ -850,11 +860,11 @@
     function onTplSave() {
         try {
             var tpl = LIB.makeTemplate({
-                name: $("tplName").value,
-                markerName: $("tplMarkerName").value,
+                name: fieldText("tplName"),
+                markerName: fieldText("tplMarkerName"),
                 color: $("tplColor").value,
                 type: $("tplType").value,
-                comments: $("tplComment").value,
+                comments: fieldText("tplComment"),
                 commentMode: $("tplCommentMode").value
             });
             var list = LIB.upsert(state.templates, tpl);
@@ -888,13 +898,13 @@
     // ---------- fase 2: seleções salvas ----------
     function onSavedSave() {
         try {
-            var sel = LIB.makeSelection($("savedName").value, selected().map(function (r) { return r.key; }));
+            var sel = LIB.makeSelection(fieldText("savedName"), selected().map(function (r) { return r.key; }));
             var list = LIB.upsert(state.savedSels, sel);
             saveStore(SEL_KEY + state.ctx.sequenceId, list);
             state.savedSels = list;
             fillSelect($("savedSel"), list, "s:", tr("Nenhuma seleção salva"));
             $("savedSel").value = "s:" + sel.name;
-            $("savedName").value = "";
+            fieldText("savedName") = "";
             updateButtons();
             setStatus(tr("Seleção salva: {0} ({1} marcador(es)).", sel.name, sel.keys.length), "ok");
         } catch (e) {
@@ -960,7 +970,8 @@
         function finish(save) {
             if (done) return;
             done = true;
-            var value = input.value;
+            // (campo apagado chega como null no Premiere: vira texto vazio)
+            var value = input.value === null || input.value === undefined ? "" : String(input.value);
             state.editing = null;
             if (!save || value === original) { render(); return; }
             runEdit(function () {
@@ -1093,7 +1104,7 @@
     function clearFilters() {
         state.filters = S.emptyFilters();
         state.inOutOn = false;
-        $("filterText").value = "";
+        fieldText("filterText") = "";
         $("filterType").value = "any";   // (o UXP exige <option> com value não vazio)
         $("filterDuration").value = "all";
         state.colorsSig = "";   // redesenha os chips sem "on"
@@ -1672,8 +1683,20 @@
     // Plano B (Premiere 26.5.2 não entrega "wheel"): quando a área rola sozinha um passo
     // pequeno, o painel soma (N − 1) passos iguais na mesma direção. Com o botão do mouse
     // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
-    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, edge: {}, x: -1, y: -1 };
-    var EDGE_MS = 250;
+    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, edge: {}, typ: {}, x: -1, y: -1 };
+    // Recuo logo depois de encostar na ponta:
+    //  - até EDGE_FIRST_MS da primeira batida, qualquer recuo é desfeito (é o Premiere voltando);
+    //  - depois, até EDGE_MAX_MS, só recuos menores que um passo normal da roda (o resto da
+    //    animação dele). Um passo do tamanho normal é a pessoa rolando de volta: passa.
+    // Antes a comparação era com o último passo antes da ponta, que costuma ser minúsculo (o
+    // pedaço que faltava): o recuo passava do limite e a engasgada voltava.
+    var EDGE_FIRST_MS = 300;
+    var EDGE_MAX_MS = 900;
+    var scrollLog = [];       // últimos avisos de rolagem (Diagnóstico), para achar engasgadas
+    function logScroll(id, cur, d, what) {
+        scrollLog.push({ t: Date.now(), id: id, cur: Math.round(cur), d: Math.round(d), what: what });
+        if (scrollLog.length > 8) scrollLog.shift();
+    }
     var SCROLLBAR_ZONE = 24;   // px junto à borda direita: área da barra de rolagem
 
     // Arrastar a barra de rolagem também gera passos pequenos, e o Premiere não entrega o clique
@@ -1699,21 +1722,40 @@
         if (amp.own[id]) { amp.own[id] = false; return; }          // rolagem feita por nós
         if (amp.quietUntil && amp.quietUntil[id] > Date.now()) return;   // lista sendo redesenhada
         if (state.wheelSeen || state.scrollSpeed <= 1 || amp.mouseDown || last === undefined) return;
-        if (nearScrollbar(el)) { amp.edge[id] = null; return; }      // arrastando a barra
         var d = cur - last;
-        if (!d || Math.abs(d) > 200) return;                          // salto grande: não é a roda
+        if (nearScrollbar(el)) { amp.edge[id] = null; logScroll(id, cur, d, "barra"); return; }   // arrastando a barra
+        if (!d || Math.abs(d) > 200) { logScroll(id, cur, d, "ignorou"); return; }               // salto grande: não é a roda
 
         var edge = amp.edge[id], now = Date.now();
-        if (edge && now - edge.at < EDGE_MS && (d > 0) !== (edge.dir > 0) && Math.abs(d) <= edge.step * 3) {
-            setScroll(el, id, edge.pos);                              // o "volta um pouco" do Premiere
-            return;
+        if (edge && now - edge.first < EDGE_MAX_MS) {
+            var typical = amp.typ[id] || Math.abs(d);
+            var bounce = now - edge.first < EDGE_FIRST_MS || Math.abs(d) < typical * 0.6;
+            if ((d > 0) !== (edge.dir > 0) && bounce) {
+                // o "volta um pouco" do Premiere: fica na ponta (pode vir em vários avisos seguidos)
+                setScroll(el, id, edge.pos);
+                logScroll(id, cur, d, "segurou");
+                return;
+            }
+            if ((d > 0) === (edge.dir > 0)) {
+                // continuou na direção da ponta: só confirma a ponta
+                edge.pos = setScroll(el, id, cur + d * (state.scrollSpeed - 1));
+                logScroll(id, cur, d, "ponta");
+                return;
+            }
+            amp.edge[id] = null;                                      // rolando de volta de verdade
         }
 
         var want = Math.max(0, cur + d * (state.scrollSpeed - 1));
         var got = setScroll(el, id, want);
         // encostou numa ponta: o Premiere não deixou ir até onde pedimos (ou chegou no 0)
-        if (Math.abs(got - want) > 1 || got <= 0) amp.edge[id] = { at: now, dir: d, step: Math.abs(d), pos: got };
-        else amp.edge[id] = null;
+        if (Math.abs(got - want) > 1 || got <= 0) {
+            amp.edge[id] = { first: now, dir: d, pos: got };
+            logScroll(id, cur, d, "ponta");
+        } else {
+            amp.edge[id] = null;
+            amp.typ[id] = amp.typ[id] ? amp.typ[id] * 0.7 + Math.abs(d) * 0.3 : Math.abs(d);   // passo normal
+            logScroll(id, cur, d, "multiplicou");
+        }
     }
 
     function setScroll(el, id, pos) {
@@ -1788,7 +1830,7 @@
         on("list", "dblclick", onListDoubleClick);
 
         // filtros
-        on("filterText", "input", function () { state.filters.text = $("filterText").value; filtersChanged(); });
+        on("filterText", "input", function () { state.filters.text = fieldText("filterText"); filtersChanged(); });
         on("filterType", "change", function () { var v = $("filterType").value; state.filters.type = v === "any" ? "" : v; filtersChanged(); });
         on("filterDuration", "change", function () { state.filters.duration = $("filterDuration").value; filtersChanged(); });
         on("colorChips", "click", onColorChip);

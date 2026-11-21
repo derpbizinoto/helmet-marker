@@ -9,6 +9,8 @@
 - Criar um marcador no começo de cada clipe (só vídeo, só áudio ou os dois), numerado.
 - Exportar também lista de revisão ("1. timecode — comentário"), texto simples e JSON.
 - Painel mais leve: só redesenha o que mudou, as prévias esperam um instante depois do clique, a verificação automática faz uma leitura leve e o fundo usa cores sólidas no lugar de degradês. Cartões recolhíveis (clique no título; o painel lembra quais ficam abertos): cartão fechado não pesa. O diagnóstico só se atualiza aberto e mostra quanto tempo a lista levou e a maior travada do painel.
+- Corrigido: a engasgada no fim da rolagem voltava quando o recuo do Premiere vinha em vários pedaços; o Diagnóstico agora mostra os últimos avisos de rolagem.
+- Corrigido: campo vazio chega como nulo no Premiere. Nos campos de texto isso podia virar "null"; nos de número, virar 0 sem aviso (agora dá mensagem); na edição direto na lista, apagar o nome não fazia nada.
 - Corrigido: a rolagem dava uma engasgada e voltava um pouco ao chegar no começo ou no fim; agora chega até o fim e arrastar a barra de rolagem não é mais multiplicado.
 - Corrigido: erro "Cannot read properties of null (reading 'trim')" (no Premiere o campo de texto vazio vem como nulo).
 - Duração: mesma duração para vários marcadores (em segundos ou frames) e tornar pontuais.
