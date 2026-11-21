@@ -105,6 +105,7 @@ var HMI18n = (function () {
         "Vai mover todos os marcadores a partir do playhead.": "Will move every marker from the playhead on.",
         "Vai mover {0} marcador(es).": "Will move {0} marker(s).",
         "Nada a alterar: os marcadores já estão assim.": "Nothing to change: the markers are already like that.",
+        "✓ Os selecionados já estão assim.": "✓ The selected markers are already like this.",
         "Helmet Marker: mudar cor": "Helmet Marker: change color",
         "Cor alterada em {0} marcador(es). Um Ctrl+Z desfaz.": "Color changed on {0} marker(s). One Ctrl+Z undoes it.",
         "Helmet Marker: mudar nome": "Helmet Marker: change name",

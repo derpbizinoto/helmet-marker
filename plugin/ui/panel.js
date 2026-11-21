@@ -391,7 +391,7 @@
     function previewText(fn, verbKey) {
         try {
             var n = fn();
-            if (!n) return tr("Nada a alterar: os marcadores já estão assim.");
+            if (!n) return tr("✓ Os selecionados já estão assim.");
             return tr(verbKey, n);
         } catch (e) {
             return errText(e);
@@ -440,7 +440,7 @@
             var o = numberOptions();
             var n = PL.planNumber(sel, o).length;
             var first = PL.numberedName(o.prefix, o.start, o.digits, o.suffix);
-            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("Nada a alterar: os marcadores já estão assim.")) + "  " + tr("Primeiro nome: {0}", first);
+            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("✓ Os selecionados já estão assim.")) + "  " + tr("Primeiro nome: {0}", first);
         } catch (e) {
             return errText(e);
         }
@@ -520,6 +520,12 @@
         $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
     }
 
+    // Pede ao Premiere para redesenhar a timeline (ver P.refreshTimeline). Se falhar, a
+    // alteração já foi feita: só não aparece até clicar na timeline, então não vira erro.
+    function redrawTimeline() {
+        return P.refreshTimeline(state.ctx).catch(function () { /* a alteração já foi feita */ });
+    }
+
     // ---------- operações ----------
     // Relê antes (marcadores "vivos" e atualizados), monta o plano, aplica numa transação e relê.
     async function runEdit(buildPlan, undoLabel, doneKey) {
@@ -536,6 +542,7 @@
             }
             P.applyPlan(state.ctx, plan, undoLabel);
             message = tr(doneKey, plan.length);
+            await redrawTimeline();
         } catch (e) {
             showError(e);
             return;
@@ -719,7 +726,7 @@
             state.busy = false;
             updateButtons();
         }
-        if (message) read(N("depois de uma operação do painel"), true, message).catch(showError);
+        if (message) redrawTimeline().then(function () { return read(N("depois de uma operação do painel"), true, message); }).catch(showError);
     }
 
     // ---------- fase 2: localizar, numerar, modelos ----------
@@ -775,6 +782,7 @@
                     kind = "warn";
                 }
             }
+            await redrawTimeline();
         } catch (e) {
             showError(e);
             message = null;
