@@ -92,7 +92,7 @@
         allRecords.forEach(function (r, i) { if (want[r.key]) idx.push(i); });
         if (idx.length !== selected.length) throw new Error("O marcador não está mais na lista. Nada foi alterado.");
         if (idx[idx.length - 1] - idx[0] + 1 !== idx.length) {
-            throw new Error("Os marcadores selecionados precisam ser seguidos, sem nenhum outro marcador no meio (inclusive os escondidos pelos filtros). Nada foi alterado.");
+            throw new Error("Só funciona com marcadores seguidos (nenhum outro no meio, nem escondido pelos filtros).");
         }
         return idx.map(function (i) { return allRecords[i]; });
     }

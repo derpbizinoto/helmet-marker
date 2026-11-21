@@ -282,7 +282,7 @@
         if (!hasSeq()) {
             setText(empty, tr("Abra uma sequência na timeline e clique em Atualizar."));
         } else if (!state.records.length) {
-            setText(empty, tr("Esta sequência não tem marcadores. Crie alguns com M na timeline ou use as ferramentas de teste no fim do painel."));
+            setText(empty, tr("Esta sequência não tem marcadores."));
         } else {
             setText(empty, tr("Nenhum marcador passa pelos filtros."));
         }
@@ -441,7 +441,7 @@
     function previewText(fn, verbKey) {
         try {
             var n = fn();
-            if (!n) return tr("✓ Os selecionados já estão assim.");
+            if (!n) return tr("✓ Já estão assim.");
             return tr(verbKey, n);
         } catch (e) {
             return errText(e);
@@ -461,7 +461,7 @@
 
     function renderPreviews() {
         var sel = selected();
-        var none = tr("Selecione marcadores na lista.");
+        var none = "";   // sem seleção: os botões ficam desligados, não precisa repetir o aviso
         var change = N("Vai alterar {0} marcador(es).");
         setText($("pvColor"), sel.length ? previewText(function () { return PL.planColor(sel, selValue("editColor")).length; }, change) : none);
         setText($("pvName"), sel.length ? previewText(function () { return PL.planName(sel, fieldText("editName")).length; }, change) : none);
@@ -505,7 +505,7 @@
             var o = numberOptions();
             var n = PL.planNumber(sel, o).length;
             var first = PL.numberedName(o.prefix, o.start, o.digits, o.suffix);
-            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("✓ Os selecionados já estão assim.")) + "  " + tr("Primeiro nome: {0}", first);
+            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("✓ Já estão assim.")) + "  " + tr("Primeiro nome: {0}", first);
         } catch (e) {
             return errText(e);
         }
@@ -777,7 +777,7 @@
     function partBPreviews(sel, none, change) {
         setText($("pvDuration"), sel.length ? previewText(function () { return PL.planDuration(sel, durationFrames()).length; }, change) : none);
         setText($("pvDistribute"), sel.length ? previewText(function () { return PL.planDistribute(sel).length; }, change) : none);
-        setText($("pvSnap"), sel.length ? tr("Os cortes são lidos ao clicar.") : none);
+        setText($("pvSnap"), "");
         setText($("pvClean"), !sel.length ? none : (function () {
             try {
                 var tol = numField("cleanTol");
@@ -1372,7 +1372,7 @@
         if (!list.length) {
             var e = document.createElement("option");
             e.value = "none";
-            e.textContent = state.sequences ? tr("Nenhuma outra sequência no projeto") : tr("Clique em Atualizar lista");
+            e.textContent = state.sequences ? tr("Nenhuma outra sequência no projeto") : tr("Clique em Atualizar");
             sel.appendChild(e);
             sel.value = "none";
         } else {
@@ -1561,11 +1561,12 @@
         if (hasSeq() && state.records.length) {
             var p = PL.progress(state.records);
             lines.push(tr("Feitos: {0} de {1}", p.done, p.total));
-            p.byColor.forEach(function (b) {
+            // por cor numa linha só (menos texto na tela)
+            if (p.byColor.length) lines.push(p.byColor.map(function (b) {
                 var c = M.colorFor(state.ctx.colors, b.index);
                 var meaning = state.legend[b.index] ? " (" + state.legend[b.index] + ")" : "";
-                lines.push("● " + tr(c.label) + meaning + ": " + b.done + "/" + b.total);
-            });
+                return tr(c.label) + meaning + " " + b.done + "/" + b.total;
+            }).join("   ·   "));
         }
         while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
         lines.forEach(function (l, i) {
