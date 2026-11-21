@@ -46,7 +46,9 @@
         lastClick: null,      // para reconhecer o duplo clique
         templates: [],
         savedSels: [],
-        savedSeqId: null
+        savedSeqId: null,
+        scrollSpeed: 3,
+        wheelSeen: false
     };
 
     // ---------- coisas guardadas no painel (localStorage do UXP) ----------
@@ -389,7 +391,7 @@
     function previewText(fn, verbKey) {
         try {
             var n = fn();
-            if (!n) return tr("Nada a alterar.");
+            if (!n) return tr("Nada a alterar: os marcadores já estão assim.");
             return tr(verbKey, n);
         } catch (e) {
             return errText(e);
@@ -438,7 +440,7 @@
             var o = numberOptions();
             var n = PL.planNumber(sel, o).length;
             var first = PL.numberedName(o.prefix, o.start, o.digits, o.suffix);
-            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("Nada a alterar.")) + "  " + tr("Primeiro nome: {0}", first);
+            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("Nada a alterar: os marcadores já estão assim.")) + "  " + tr("Primeiro nome: {0}", first);
         } catch (e) {
             return errText(e);
         }
@@ -475,6 +477,7 @@
             lines.push(tr("Marcadores com guid: {0} de {1}", withGuid, state.records.length));
             lines.push(tr("Marcadores fora do frame exato: {0}", state.records.filter(function (r) { return !r.onFrame; }).length));
         }
+        lines.push(tr("Roda do mouse no painel: {0}", state.wheelSeen ? tr("recebida") : tr("ainda não recebida")));
         var box = $("diag");
         clear(box);
         lines.forEach(function (l) {
@@ -1108,6 +1111,41 @@
         $("content").style.height = Math.max(80, h - used) + "px";
     }
 
+    // ---------- rolagem com a roda do mouse ----------
+    // A rolagem nativa do painel no Premiere é lenta. Se o UXP entregar o evento "wheel" (a doc
+    // não diz), o painel rola sozinho N vezes mais. Se não entregar, nada muda. O Diagnóstico
+    // mostra se o evento chegou.
+    var SCROLL_KEY = "helmetmarker.scrollSpeed";
+    var SCROLLERS = ["list", "ytPreview", "content"];   // de dentro para fora
+
+    function loadScrollSpeed() {
+        var v = 3;
+        try { v = Number(window.localStorage.getItem(SCROLL_KEY)) || 3; } catch (e) { /* padrão */ }
+        return [1, 2, 3, 4, 6].indexOf(v) >= 0 ? v : 3;
+    }
+
+    function canScroll(el, dy) {
+        if (!el || el.scrollHeight <= el.clientHeight + 1) return false;
+        if (dy < 0) return el.scrollTop > 0;
+        return el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+    }
+
+    function onWheel(e) {
+        if (!state.wheelSeen) { state.wheelSeen = true; renderDiagnostics(); }
+        if (state.scrollSpeed <= 1) return;           // "Normal": deixa o Premiere rolar
+        var dy = Number(e.deltaY) || 0;
+        if (!dy) return;
+        if (e.deltaMode === 1) dy *= 16;              // em linhas
+        else if (e.deltaMode === 2) dy *= 300;        // em páginas
+        var box = null;
+        for (var n = e.target; n && !box; n = n.parentNode) {
+            if (n.id && SCROLLERS.indexOf(n.id) >= 0 && canScroll(n, dy)) box = n;
+        }
+        if (!box) return;
+        if (e.preventDefault) e.preventDefault();
+        box.scrollTop = box.scrollTop + dy * state.scrollSpeed;
+    }
+
     // ---------- início ----------
     // Botões são <div role="button"> (o UXP não deixa estilizar <button>). Desligado = classe
     // "is-disabled", e o clique num botão desligado é ignorado aqui.
@@ -1126,6 +1164,14 @@
         setTimeout(fitContent, 300);
         show($("confirmBar"), false);
         $("version").textContent = "v" + HM_VERSION;
+
+        state.scrollSpeed = loadScrollSpeed();
+        $("scrollSpeed").value = String(state.scrollSpeed);
+        on("scrollSpeed", "change", function () {
+            state.scrollSpeed = Number($("scrollSpeed").value) || 1;
+            try { window.localStorage.setItem(SCROLL_KEY, String(state.scrollSpeed)); } catch (e) { /* só nesta sessão */ }
+        });
+        document.addEventListener("wheel", onWheel, { passive: false });
 
         var lang = $("langSelect");
         lang.value = HMI18n.lang();

@@ -7,6 +7,7 @@
 - Alinhar a uma grade: BPM digitado (batida, meia, 1/4, 2 ou 4 batidas) ou a cada X frames, a partir do início da sequência ou do playhead.
 - Encaixar no corte mais próximo (começo/fim dos clipes de vídeo e/ou áudio), até uma distância máxima.
 - Remover duplicados e mesclar marcadores próximos juntando os comentários (com confirmação).
+- Rolagem mais rápida com a roda do mouse (velocidade ajustável em Ferramentas de teste › Painel).
 
 - Localizar e substituir em nomes e comentários (só no nome, só no comentário ou nos dois; com ou sem diferenciar maiúsculas).
 - Numeração automática dos nomes em ordem de tempo, com prefixo, sufixo, número inicial, passo e zeros à esquerda.

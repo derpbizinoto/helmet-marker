@@ -99,7 +99,6 @@ var HMI18n = (function () {
         "Nenhum marcador nessa posição.": "No markers in that position.",
 
         // --- painel: prévia e operações ------------------------------------------------
-        "Nada a alterar.": "Nothing to change.",
         "Selecione marcadores na lista.": "Select markers in the list.",
         "Vai alterar {0} marcador(es).": "Will change {0} marker(s).",
         "Vai excluir {0} marcador(es).": "Will delete {0} marker(s).",
@@ -304,6 +303,13 @@ var HMI18n = (function () {
         "Não há clipes nas trilhas escolhidas.": "There are no clips on the chosen tracks.",
         "A distância precisa ser um número inteiro de 0 ou mais frames.": "The distance must be a whole number of frames, 0 or more.",
 
+        "Painel": "Panel",
+        "Velocidade da rolagem": "Scroll speed",
+        "Normal (do Premiere)": "Normal (Premiere's)",
+        "Roda do mouse no painel: {0}": "Mouse wheel in the panel: {0}",
+        "recebida": "received",
+        "ainda não recebida": "not received yet",
+
         // --- cores e tipos ----------------------------------------------------------------
         "Verde": "Green",
         "Vermelho": "Red",
@@ -346,7 +352,7 @@ var HMI18n = (function () {
     };
 
     // Iguais nas duas línguas (os testes não cobram tradução para estes).
-    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "BPM"];
+    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "BPM", "2x", "3x", "4x", "6x"];
 
     var hasOwn = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
 
