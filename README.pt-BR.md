@@ -31,7 +31,9 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 
 ## Requisitos
 
-- **Premiere Pro 26.5 ou mais novo** (Windows ou macOS), com o app **Creative Cloud**.
+- **Premiere Pro 26.5 ou mais novo** (Windows ou macOS).
+- Para carregar durante o desenvolvimento: **UXP Developer Tool 2.2 ou mais novo** (gratuito, pelo Creative Cloud).
+- Para rodar os testes automáticos: **Node.js** (qualquer versão atual).
 
 ## Instalar
 
@@ -42,15 +44,33 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 
 Para atualizar, faça o mesmo com o `.ccx` da versão nova. Para remover, use a área de plug-ins do app Creative Cloud.
 
-## Gerar o pacote (.ccx)
+## Carregar durante o desenvolvimento (UXP Developer Tool)
 
-Para quem mexe no código. Precisa do **Node.js** (qualquer versão atual). Na pasta do projeto, rode
+Feito uma vez:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
-```
+1. No app **Creative Cloud**, vá em **Todos os aplicativos**, procure **UXP Developer Tools** e clique em **Instalar**.
+2. Abra o **UXP Developer Tool**. Na primeira vez ele pede para ativar o modo de desenvolvedor: clique em **Enable** (pede permissão de administrador).
+3. No Premiere, vá em **Configurações › Plug-ins** (*Settings › Plugins*), marque **Ativar modo de desenvolvedor** (*Enable developer mode*) e reinicie o Premiere.
 
-Ele roda os testes, confere a versão e gera `dist\HelmetMarker-<versão>.ccx` e um `.zip` com o .ccx, a licença e os leia-me.
+Toda vez:
+
+1. Abra o Premiere e um projeto.
+2. No UXP Developer Tool, clique em **Add Plugin** e escolha o arquivo `plugin\manifest.json` desta pasta (só na primeira vez; depois ele já aparece na lista).
+3. Na linha do Helmet Marker, clique em **••• › Load** (ou **Load & Watch**, que recarrega sozinho quando o código muda).
+4. O painel abre no Premiere. Se fechar, reabra em **Janela › Plug-ins UXP › Helmet Marker**.
+5. Se o `manifest.json` mudar, clique em **Unload** e depois **Load** de novo.
+6. **Debug** abre o console do painel (útil para mandar mensagens de erro).
+
+## Empacotar (.ccx)
+
+Duas formas, o resultado é o mesmo:
+
+- **Script:** na pasta do projeto, rode
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
+  ```
+  Ele roda os testes, confere a versão e gera `dist\HelmetMarker-<versão>.ccx` e um `.zip` com o .ccx, a licença e os leia-me.
+- **UXP Developer Tool:** na linha do plugin, **••• › Package**, e escolha a pasta de destino.
 
 ## Testes automáticos
 

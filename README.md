@@ -31,7 +31,9 @@ Free and open source ([MIT license](LICENSE)).
 
 ## Requirements
 
-- **Premiere Pro 26.5 or newer** (Windows or macOS), with the **Creative Cloud** app.
+- **Premiere Pro 26.5 or newer** (Windows or macOS).
+- To load it during development: **UXP Developer Tool 2.2 or newer** (free, from Creative Cloud).
+- To run the automated tests: **Node.js** (any current version).
 
 ## Install
 
@@ -42,15 +44,31 @@ Free and open source ([MIT license](LICENSE)).
 
 To update, do the same with the new version's `.ccx`. To remove it, use the plugins area of the Creative Cloud app.
 
-## Build the package (.ccx)
+## Load during development (UXP Developer Tool)
 
-For people working on the code. Requires **Node.js** (any current version). In the project folder, run
+Once:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
-```
+1. In the **Creative Cloud** app, go to **All apps**, search for **UXP Developer Tools** and click **Install**.
+2. Open the **UXP Developer Tool**. The first time it asks to enable developer mode: click **Enable** (needs administrator rights).
+3. In Premiere, go to **Settings › Plugins**, check **Enable developer mode** and restart Premiere.
 
-It runs the tests, checks the version and creates `dist\HelmetMarker-<version>.ccx` plus a `.zip` with the .ccx, license and readmes.
+Every time:
+
+1. Open Premiere and a project.
+2. In the UXP Developer Tool, click **Add Plugin** and choose `plugin\manifest.json` from this folder (first time only).
+3. On the Helmet Marker row, click **••• › Load** (or **Load & Watch**, which reloads when the code changes).
+4. The panel opens in Premiere. If you close it, reopen it from **Window › UXP Plugins › Helmet Marker**.
+5. If `manifest.json` changes, click **Unload** and then **Load** again.
+6. **Debug** opens the panel console.
+
+## Package (.ccx)
+
+- **Script:** in the project folder, run
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
+  ```
+  It runs the tests, checks the version and creates `dist\HelmetMarker-<version>.ccx` plus a `.zip` with the .ccx, license and readmes.
+- **UXP Developer Tool:** on the plugin row, **••• › Package**, then choose a folder.
 
 ## Automated tests
 
