@@ -18,6 +18,10 @@ Free and open source ([MIT license](LICENSE)).
 - Bulk edit of color, name, comment (replace or append) and type; delete with confirmation. Before applying, the panel shows how many markers will change.
 - Move selected markers by X frames, ±1 frame, ±1 second, or everything from the playhead on. All math is done in whole frames.
 - Export YouTube chapters (with warnings for YouTube rules) and CSV.
+- Find and replace in names and comments; automatic numbering with prefix/suffix ("Scene 01, Scene 02…").
+- Double-click a name or comment in the list to edit it right there.
+- Marker templates (name, color, type, comment): apply to the selection or create a marker at the playhead.
+- Saved selections with a name, per sequence.
 - Keeps the list up to date: when the sequence changes and with a light check every few seconds (Premiere does not notify when a marker is added in the timeline).
 
 ## Requirements

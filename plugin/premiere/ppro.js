@@ -236,17 +236,24 @@ var HMPremiere = (function () {
         return true;
     }
 
-    // plan: saída de HMMarkers.planTestMarkers. Marcadores pontuais do tipo Comentário.
+    // plan: [{ frame, name, type?, comments? }] (ex.: HMMarkers.planTestMarkers). Marcadores
+    // pontuais; sem tipo = Comentário.
     // (Cor não é definida aqui: createAddMarkerAction não devolve o marcador criado, e mudar
-    // a cor exigiria uma segunda transação — dois Ctrl+Z.)
+    // a cor exige uma segunda transação — dois Ctrl+Z.)
     function addMarkers(ctx, plan, undoLabel) {
         if (!ctx.markersObj) throw new Error("Atualize a lista antes de alterar marcadores.");
         var a = ppro();
-        var type = (a.Marker && a.Marker.MARKER_TYPE_COMMENT) || "Comment";
         var zero = a.TickTime.TIME_ZERO || a.TickTime.createWithFrameAndFrameRate(0, ctx.frameRate);
-        var items = plan.map(function (p) { return { name: p.name, time: tickAtFrame(ctx, p.frame) }; });
+        var items = plan.map(function (p) {
+            return {
+                name: String(p.name || ""),
+                type: typeValue(p.type || "Comment"),
+                comments: String(p.comments || ""),
+                time: tickAtFrame(ctx, p.frame)
+            };
+        });
         return runTransaction(ctx, undoLabel, function (add) {
-            items.forEach(function (it) { add(ctx.markersObj.createAddMarkerAction(it.name, type, it.time, zero, "")); });
+            items.forEach(function (it) { add(ctx.markersObj.createAddMarkerAction(it.name, it.type, it.time, zero, it.comments)); });
         });
     }
 

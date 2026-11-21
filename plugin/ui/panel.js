@@ -1,4 +1,4 @@
-// ui/panel.js — Helmet Marker (fase 1: MVP)
+// ui/panel.js — Helmet Marker (fases 1 e 2)
 // Monta a tela, guarda o estado (filtros, seleção) e chama a camada premiere/.
 // Regras: toda alteração em massa é um plano do core/ aplicado numa única transação;
 // erros aparecem sempre na barra de status (nunca em silêncio).
@@ -11,8 +11,12 @@
     var PL = HMPlans;
     var X = HMExport;
     var T = HMTimecode;
+    var LIB = HMLibrary;
 
     var POLL_MIN = 2000, POLL_MAX = 15000;
+    var TPL_KEY = "helmetmarker.templates";
+    var SEL_KEY = "helmetmarker.selections.";   // + id da sequência
+    var DOUBLE_CLICK_MS = 450;
 
     var state = {
         ctx: null,
@@ -35,8 +39,24 @@
         events: [],
         lastEvent: "",
         lastRead: null,
-        colorsSig: ""
+        colorsSig: "",
+        // fase 2
+        matchCase: false,
+        editing: null,        // edição na célula da lista em andamento { key, field }
+        lastClick: null,      // para reconhecer o duplo clique
+        templates: [],
+        savedSels: [],
+        savedSeqId: null
     };
+
+    // ---------- coisas guardadas no painel (localStorage do UXP) ----------
+    function loadStore(key) {
+        try { return LIB.parseList(window.localStorage.getItem(key)); } catch (e) { return []; }
+    }
+    function saveStore(key, list) {
+        try { window.localStorage.setItem(key, JSON.stringify(list)); }
+        catch (e) { throw new Error("Não consegui guardar no painel."); }
+    }
 
     function $(id) { return document.getElementById(id); }
     function show(el, visible) { el.style.display = visible ? "" : "none"; }
@@ -134,7 +154,7 @@
 
     function poll() {
         state.pollTimer = null;
-        if (state.busy || state.confirm || state.reading) { schedulePoll(); return; }
+        if (state.busy || state.confirm || state.reading || state.editing) { schedulePoll(); return; }
         read(N("verificação automática"), true).then(function () {
             state.lastPollError = "";
         }, function (e) {
@@ -208,8 +228,11 @@
     }
 
     function render() {
+        // Durante a edição numa célula, redesenhar apagaria o campo: espera terminar.
+        if (state.editing) return;
         $("seqInfo").textContent = seqLine();
         buildColorControls();
+        renderSavedList(false);
 
         var list = $("list");
         var scroll = list.scrollTop;
@@ -303,7 +326,65 @@
             sel.appendChild(o);
         });
         if (keep) sel.value = keep;
+
+        // cor do modelo: "Não mudar" + as cores
+        var tc = $("tplColor");
+        var keepTpl = tc.value;
+        clear(tc);
+        var k = document.createElement("option");
+        k.value = "keep";
+        k.textContent = tr("Não mudar");
+        tc.appendChild(k);
+        colors.forEach(function (c) {
+            var o = document.createElement("option");
+            o.value = String(c.index);
+            o.textContent = tr(c.label);
+            tc.appendChild(o);
+        });
+        tc.value = keepTpl || "keep";
     }
+
+    // ---------- listas com nome (seleções salvas e modelos) ----------
+    function fillSelect(sel, items, prefix, emptyText) {
+        var keep = sel.value;
+        clear(sel);
+        if (!items.length) {
+            var e = document.createElement("option");
+            e.value = "none";
+            e.textContent = emptyText;
+            sel.appendChild(e);
+            sel.value = "none";
+            return;
+        }
+        items.forEach(function (it) {
+            var o = document.createElement("option");
+            o.value = prefix + it.name;
+            o.textContent = it.name;
+            sel.appendChild(o);
+        });
+        sel.value = keep;
+        if (sel.value !== keep) sel.value = prefix + items[0].name;
+    }
+
+    function pickedName(id, prefix) {
+        var v = $(id).value || "";
+        return v.indexOf(prefix) === 0 ? v.slice(prefix.length) : "";
+    }
+
+    // Seleções salvas são por sequência (as chaves dos marcadores só valem nela).
+    function renderSavedList(force) {
+        var seqId = hasSeq() ? state.ctx.sequenceId : "";
+        if (!force && seqId === state.savedSeqId) return;
+        state.savedSeqId = seqId;
+        state.savedSels = seqId ? loadStore(SEL_KEY + seqId) : [];
+        fillSelect($("savedSel"), state.savedSels, "s:", tr("Nenhuma seleção salva"));
+    }
+    function currentSaved() { return LIB.find(state.savedSels, pickedName("savedSel", "s:")); }
+
+    function renderTemplateList() {
+        fillSelect($("tplSelect"), state.templates, "t:", tr("Nenhum modelo salvo"));
+    }
+    function currentTemplate() { return LIB.find(state.templates, pickedName("tplSelect", "t:")); }
 
     function previewText(fn, verbKey) {
         try {
@@ -325,10 +406,40 @@
         $("pvType").textContent = sel.length ? previewText(function () { return PL.planType(sel, $("editType").value).length; }, change) : none;
         $("pvDelete").textContent = sel.length ? tr("Vai excluir {0} marcador(es).", sel.length) : none;
 
+        $("pvReplace").textContent = sel.length ? previewText(function () {
+            return PL.planReplace(sel, $("findText").value, $("replaceText").value, $("findFields").value, state.matchCase).length;
+        }, change) : none;
+        $("pvNumber").textContent = sel.length ? numberPreview(sel) : none;
+        var tpl = currentTemplate();
+        if (!state.templates.length) $("pvTpl").textContent = tr("Crie um modelo abaixo.");
+        else if (!tpl) $("pvTpl").textContent = tr("Escolha um modelo.");
+        else $("pvTpl").textContent = sel.length ? previewText(function () { return PL.planTemplate(sel, tpl).length; }, change) : none;
+
         if (state.afterPlayheadOn) $("pvMove").textContent = tr("Vai mover todos os marcadores a partir do playhead.");
         else $("pvMove").textContent = sel.length ? tr("Vai mover {0} marcador(es).", sel.length) : none;
 
         renderExportPreview();
+    }
+
+    function numberOptions() {
+        return {
+            prefix: $("numPrefix").value,
+            start: Number($("numStart").value),
+            step: Number($("numStep").value),
+            digits: Number($("numDigits").value),
+            suffix: $("numSuffix").value
+        };
+    }
+
+    function numberPreview(sel) {
+        try {
+            var o = numberOptions();
+            var n = PL.planNumber(sel, o).length;
+            var first = PL.numberedName(o.prefix, o.start, o.digits, o.suffix);
+            return (n ? tr("Vai alterar {0} marcador(es).", n) : tr("Nada a alterar.")) + "  " + tr("Primeiro nome: {0}", first);
+        } catch (e) {
+            return errText(e);
+        }
     }
 
     function renderExportPreview() {
@@ -388,6 +499,16 @@
         var canExport = ready && exportTargets().length > 0;
         ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy"].forEach(function (id) { setEnabled(id, canExport); });
         setEnabled("btnTest", ready);
+        ["btnReplace", "btnNumber"].forEach(function (id) { setEnabled(id, ready && n); });
+        var tpl = currentTemplate();
+        setEnabled("btnTplApply", ready && n && tpl);
+        setEnabled("btnTplCreate", ready && tpl);
+        setEnabled("btnTplDelete", !!tpl);
+        var saved = currentSaved();
+        setEnabled("btnSavedLoad", ready && saved);
+        setEnabled("btnSavedDelete", !!saved);
+        setEnabled("btnSavedSave", ready && n);
+        $("chipMatchCase").className = "chip" + (state.matchCase ? " on" : "");
         $("chipInOut").className = "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled");
         $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
     }
@@ -501,13 +622,247 @@
         if (message) read(N("depois de uma operação do painel"), true, message).catch(showError);
     }
 
+    // ---------- fase 2: localizar, numerar, modelos ----------
+    function onReplace() {
+        runEdit(function () {
+            return PL.planReplace(needSelection(), $("findText").value, $("replaceText").value, $("findFields").value, state.matchCase);
+        }, tr("Helmet Marker: localizar e substituir"), N("Texto substituído em {0} marcador(es). Um Ctrl+Z desfaz."));
+    }
+
+    function onNumber() {
+        runEdit(function () { return PL.planNumber(needSelection(), numberOptions()); },
+            tr("Helmet Marker: numerar nomes"), N("Nomes numerados: {0}. Um Ctrl+Z desfaz."));
+    }
+
+    function needTemplate() {
+        var tpl = currentTemplate();
+        if (!tpl) throw new Error("Escolha um modelo.");
+        return tpl;
+    }
+
+    function onTplApply() {
+        runEdit(function () { return PL.planTemplate(needSelection(), needTemplate()); },
+            tr("Helmet Marker: aplicar modelo"), N("Modelo aplicado em {0} marcador(es). Um Ctrl+Z desfaz."));
+    }
+
+    // Cria um marcador no playhead com o modelo. A cor precisa de uma segunda transação
+    // (createAddMarkerAction não devolve o marcador criado): o painel relê, acha o marcador
+    // novo e muda a cor dele.
+    async function onTplCreate() {
+        if (state.busy) return;
+        state.busy = true;
+        updateButtons();
+        var message = null, kind = "ok";
+        try {
+            var tpl = needTemplate();
+            await read(N("antes de uma operação do painel"), true);
+            var frame = await P.getPlayheadFrame(state.ctx);
+            var before = {};
+            state.records.forEach(function (r) { before[r.key] = true; });
+            P.addMarkers(state.ctx, [{ frame: frame, name: tpl.markerName, type: tpl.type || "Comment", comments: tpl.comments }],
+                tr("Helmet Marker: criar marcador do modelo"));
+            message = tr("Marcador criado no playhead. Um Ctrl+Z desfaz.");
+            if (typeof tpl.color === "number") {
+                await read(N("depois de uma operação do painel"), true);
+                var fresh = state.records.filter(function (r) { return !before[r.key] && r.startFrame === frame; });
+                if (fresh.length === 1) {
+                    if (fresh[0].colorIndex !== tpl.color) {
+                        P.applyPlan(state.ctx, [{ record: fresh[0], color: tpl.color }], tr("Helmet Marker: cor do marcador do modelo"));
+                        message = tr("Marcador criado no playhead. Para desfazer, use Ctrl+Z duas vezes (criação e cor).");
+                    }
+                } else {
+                    message = tr("Marcador criado no playhead, mas não consegui achá-lo para mudar a cor.");
+                    kind = "warn";
+                }
+            }
+        } catch (e) {
+            showError(e);
+            message = null;
+        } finally {
+            state.busy = false;
+            updateButtons();
+        }
+        if (message) {
+            await read(N("depois de uma operação do painel"), true).catch(showError);
+            setStatus(message, kind);
+        }
+    }
+
+    function onTplPick() {
+        var tpl = currentTemplate();
+        if (tpl) {
+            $("tplName").value = tpl.name;
+            $("tplMarkerName").value = tpl.markerName || "";
+            $("tplColor").value = typeof tpl.color === "number" ? String(tpl.color) : "keep";
+            $("tplType").value = tpl.type || "keep";
+            $("tplComment").value = tpl.comments || "";
+            $("tplCommentMode").value = tpl.commentMode || "replace";
+        }
+        renderPreviews();
+        updateButtons();
+    }
+
+    function onTplSave() {
+        try {
+            var tpl = LIB.makeTemplate({
+                name: $("tplName").value,
+                markerName: $("tplMarkerName").value,
+                color: $("tplColor").value,
+                type: $("tplType").value,
+                comments: $("tplComment").value,
+                commentMode: $("tplCommentMode").value
+            });
+            var list = LIB.upsert(state.templates, tpl);
+            saveStore(TPL_KEY, list);
+            state.templates = list;
+            renderTemplateList();
+            $("tplSelect").value = "t:" + tpl.name;
+            renderPreviews();
+            updateButtons();
+            setStatus(tr("Modelo salvo: {0}", tpl.name), "ok");
+        } catch (e) {
+            showError(e);
+        }
+    }
+
+    function onTplDelete() {
+        try {
+            var tpl = needTemplate();
+            var list = LIB.remove(state.templates, tpl.name);
+            saveStore(TPL_KEY, list);
+            state.templates = list;
+            renderTemplateList();
+            renderPreviews();
+            updateButtons();
+            setStatus(tr("Modelo apagado: {0}", tpl.name), "ok");
+        } catch (e) {
+            showError(e);
+        }
+    }
+
+    // ---------- fase 2: seleções salvas ----------
+    function onSavedSave() {
+        try {
+            var sel = LIB.makeSelection($("savedName").value, selected().map(function (r) { return r.key; }));
+            var list = LIB.upsert(state.savedSels, sel);
+            saveStore(SEL_KEY + state.ctx.sequenceId, list);
+            state.savedSels = list;
+            fillSelect($("savedSel"), list, "s:", tr("Nenhuma seleção salva"));
+            $("savedSel").value = "s:" + sel.name;
+            $("savedName").value = "";
+            updateButtons();
+            setStatus(tr("Seleção salva: {0} ({1} marcador(es)).", sel.name, sel.keys.length), "ok");
+        } catch (e) {
+            showError(e);
+        }
+    }
+
+    function onSavedLoad() {
+        var saved = currentSaved();
+        if (!saved) return;
+        var res = LIB.resolveSelection(saved, state.visible);
+        state.selected = res.selected;
+        state.anchor = null;
+        renderSelectionInfo();
+        if (res.missing) {
+            setStatus(tr("Selecionados: {0}. Outros {1} da seleção salva não estão na lista (excluídos ou escondidos pelos filtros).", res.found, res.missing), "warn");
+        } else {
+            setStatus(tr("Selecionados: {0}.", res.found), "ok");
+        }
+    }
+
+    function onSavedDelete() {
+        try {
+            var saved = currentSaved();
+            if (!saved) return;
+            var list = LIB.remove(state.savedSels, saved.name);
+            saveStore(SEL_KEY + state.savedSeqId, list);
+            state.savedSels = list;
+            fillSelect($("savedSel"), list, "s:", tr("Nenhuma seleção salva"));
+            updateButtons();
+            setStatus(tr("Seleção apagada: {0}", saved.name), "ok");
+        } catch (e) {
+            showError(e);
+        }
+    }
+
+    // ---------- fase 2: editar direto na lista ----------
+    // Duplo clique no nome ou no comentário abre um campo na própria linha.
+    // Enter (ou clicar fora) salva numa transação; Esc cancela.
+    function startInlineEdit(row, key, field) {
+        if (state.busy || !hasSeq()) return;
+        var rec = null;
+        state.records.forEach(function (r) { if (r.key === key) rec = r; });
+        if (!rec) return;
+        var cls = field === "name" ? "name" : "comment";
+        var cellEl = null;
+        Array.prototype.forEach.call(row.childNodes, function (n) {
+            if (n.className && (" " + n.className + " ").indexOf(" " + cls + " ") >= 0) cellEl = n;
+        });
+        if (!cellEl) return;
+
+        var original = String(rec[field] || "");
+        state.editing = { key: key, field: field };
+        cellEl.className += " editing";
+        clear(cellEl);
+        var input = document.createElement("input");
+        input.className = "input cell-input";
+        input.setAttribute("type", "text");
+        input.value = original;
+        cellEl.appendChild(input);
+
+        var done = false;
+        function finish(save) {
+            if (done) return;
+            done = true;
+            var value = input.value;
+            state.editing = null;
+            if (!save || value === original) { render(); return; }
+            runEdit(function () {
+                var cur = null;
+                state.records.forEach(function (r) { if (r.key === key) cur = r; });
+                if (!cur) throw new Error("O marcador não está mais na lista. Nada foi alterado.");
+                if (String(cur[field] || "") === value) return [];
+                var item = { record: cur };
+                item[field] = value;
+                return [item];
+            }, tr("Helmet Marker: editar marcador"), N("Marcador alterado. Um Ctrl+Z desfaz."));
+        }
+        input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") { finish(true); }
+            else if (e.key === "Escape") { finish(false); }
+        });
+        input.addEventListener("blur", function () { finish(true); });
+        setTimeout(function () {
+            try { input.focus(); if (input.select) input.select(); } catch (e) { /* sem foco automático */ }
+        }, 0);
+    }
+
+    function columnOf(target, row) {
+        for (var n = target; n && n !== row; n = n.parentNode) {
+            var c = " " + (n.className || "") + " ";
+            if (c.indexOf(" name ") >= 0) return "name";
+            if (c.indexOf(" comment ") >= 0) return "comments";
+        }
+        return null;
+    }
+
     // ---------- lista: clique ----------
     function onListClick(ev) {
+        if (ev.target && ev.target.tagName === "INPUT") return;   // clique dentro do campo de edição
         var el = ev.target;
         while (el && el !== this && !(el.getAttribute && el.getAttribute("data-key"))) el = el.parentNode;
         if (!el || el === this) return;
         var key = el.getAttribute("data-key");
         var mods = { ctrl: !!(ev.ctrlKey || ev.metaKey), shift: !!ev.shiftKey };
+
+        var col = columnOf(ev.target, el);
+        var t = Date.now();
+        var last = state.lastClick;
+        var isDouble = !mods.ctrl && !mods.shift && col && last && last.key === key && last.col === col && t - last.t < DOUBLE_CLICK_MS;
+        state.lastClick = isDouble ? null : { key: key, col: col, t: t };
+        if (isDouble) { startInlineEdit(el, key, col); return; }
+
         var res = S.click(state, key, mods, state.visible.map(function (r) { return r.key; }));
         state.selected = res.selected;
         state.anchor = res.anchor;
@@ -665,6 +1020,8 @@
         on("langSelect", "change", function () { HMI18n.setLang(lang.value); });
         HMI18n.onChange(function () {
             state.colorsSig = "";
+            renderTemplateList();
+            renderSavedList(true);
             if (hasSeq()) render(); else renderDiagnostics();
             $("seqInfo").textContent = seqLine();
         });
@@ -713,6 +1070,29 @@
         on("btnCsvCopy", "click", function () { doCopy(csvText, N("CSV copiado.")); });
 
         on("btnTest", "click", onTest);
+
+        // fase 2: localizar e numerar
+        on("btnReplace", "click", onReplace);
+        on("chipMatchCase", "click", function () { state.matchCase = !state.matchCase; renderSelectionInfo(); });
+        ["findText", "replaceText", "numPrefix", "numStart", "numStep", "numDigits", "numSuffix"].forEach(function (id) { on(id, "input", renderPreviews); });
+        on("findFields", "change", renderPreviews);
+        on("btnNumber", "click", onNumber);
+
+        // fase 2: modelos
+        state.templates = loadStore(TPL_KEY);
+        renderTemplateList();
+        on("tplSelect", "change", onTplPick);
+        on("btnTplApply", "click", onTplApply);
+        on("btnTplCreate", "click", onTplCreate);
+        on("btnTplDelete", "click", onTplDelete);
+        on("btnTplSave", "click", onTplSave);
+
+        // fase 2: seleções salvas
+        renderSavedList(true);
+        on("savedSel", "change", updateButtons);
+        on("btnSavedLoad", "click", onSavedLoad);
+        on("btnSavedDelete", "click", onSavedDelete);
+        on("btnSavedSave", "click", onSavedSave);
 
         window.addEventListener("error", function (e) { showError(e.error || e.message); });
         window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });

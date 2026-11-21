@@ -1,4 +1,4 @@
 // core/version.js — versão do Helmet Marker. Precisa ser igual à do manifest.json
 // (o empacotar.ps1 e os testes conferem).
-var HM_VERSION = "0.2.0";
+var HM_VERSION = "0.3.0";
 if (typeof module === "object" && module.exports) module.exports = HM_VERSION;

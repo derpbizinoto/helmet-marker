@@ -349,6 +349,93 @@ test("mover: frames inteiros, ±1 s pelo fps nominal e após o playhead", () => 
 });
 
 // ---------------------------------------------------------------------------
+// Fase 2 (parte A): localizar/substituir, numeração, modelos, seleções salvas
+// ---------------------------------------------------------------------------
+
+const LIB = require(path.join(ROOT, "core", "library.js"));
+
+test("substituir: todas as ocorrências, sem diferenciar maiúsculas por padrão", () => {
+    const r = [rec("a", 0, { name: "Cena cena CENA", comments: "cena boa" })];
+    const p = PL.planReplace(r, "cena", "Take", "both", false);
+    assert.strictEqual(p.length, 1);
+    assert.strictEqual(p[0].name, "Take Take Take");
+    assert.strictEqual(p[0].comments, "Take boa");
+});
+test("substituir: diferenciar maiúsculas e só no nome / só no comentário", () => {
+    const r = [rec("a", 0, { name: "Cena cena", comments: "cena" })];
+    assert.strictEqual(PL.planReplace(r, "cena", "x", "both", true)[0].name, "Cena x");
+    const onlyName = PL.planReplace(r, "cena", "x", "name", false)[0];
+    assert.strictEqual(onlyName.comments, undefined);
+    const onlyComm = PL.planReplace(r, "cena", "x", "comments", false)[0];
+    assert.strictEqual(onlyComm.name, undefined);
+    assert.strictEqual(onlyComm.comments, "x");
+});
+test("substituir: texto com símbolos não vira expressão regular", () => {
+    const r = [rec("a", 0, { name: "Take (1). v2.0" })];
+    assert.strictEqual(PL.planReplace(r, "(1).", "$1", "name", false)[0].name, "Take $1 v2.0");
+    assert.strictEqual(PL.planReplace(r, ".", "", "name", false)[0].name, "Take (1) v20");
+});
+test("substituir: sem ocorrência não entra no plano; procurar vazio é recusado", () => {
+    assert.strictEqual(PL.planReplace(RECS, "zzz", "x", "both", false).length, 0);
+    assert.throws(() => PL.planReplace(RECS, "", "x", "both", false), /Digite o texto a procurar/);
+    assert.throws(() => PL.planReplace(RECS, "a", "x", "outro", false), /Escolha onde procurar/);
+});
+test("numerar: em ordem de tempo, com zeros, prefixo e sufixo", () => {
+    const r = [rec("c", 200), rec("a", 0), rec("b", 100)];
+    const p = PL.planNumber(r, { prefix: "Cena ", start: 1, step: 1, digits: 2, suffix: "" });
+    assert.deepStrictEqual(p.map((x) => x.record.key + "=" + x.name), ["a=Cena 01", "b=Cena 02", "c=Cena 03"]);
+    const q = PL.planNumber(r, { prefix: "", start: 10, step: 10, digits: 3, suffix: "A" });
+    assert.deepStrictEqual(q.map((x) => x.name), ["010A", "020A", "030A"]);
+});
+test("numerar: quem já tem o nome fica de fora; números inválidos são recusados", () => {
+    const r = [rec("a", 0, { name: "Cena 01" }), rec("b", 100)];
+    assert.strictEqual(PL.planNumber(r, { prefix: "Cena ", start: 1, step: 1, digits: 2 }).length, 1);
+    assert.throws(() => PL.planNumber(r, { start: 1.5, step: 1, digits: 2 }), /número inicial/);
+    assert.throws(() => PL.planNumber(r, { start: 1, step: 0, digits: 2 }), /passo/);
+    assert.throws(() => PL.planNumber(r, { start: 1, step: 1, digits: 9 }), /dígitos/);
+    assert.strictEqual(PL.numberedName("T", -3, 2, ""), "T-03");
+});
+test("modelo: só muda o que o modelo define", () => {
+    const tpl = LIB.makeTemplate({ name: "Revisar", markerName: "", color: "1", type: "keep", comments: "REVISAR", commentMode: "prepend" });
+    assert.deepStrictEqual([tpl.color, tpl.type, tpl.markerName], [1, "", ""]);
+    const p = PL.planTemplate(RECS, tpl);
+    const b = p.find((x) => x.record.key === "b");
+    assert.strictEqual(b.color, undefined);                // já era cor 1
+    assert.strictEqual(b.comments, "REVISAR Revisar áudio");
+    assert.strictEqual(b.name, undefined);
+    const a = p.find((x) => x.record.key === "a");
+    assert.strictEqual(a.color, 1);
+});
+test("modelo: nome e tipo; modelo vazio ou sem nome é recusado", () => {
+    const tpl = LIB.makeTemplate({ name: "Cap", markerName: "Capítulo", color: "keep", type: "Chapter", comments: "" });
+    const p = PL.planTemplate([RECS[2], RECS[0]], tpl);
+    assert.strictEqual(p.find((x) => x.record.key === "c").type, undefined);   // já era Chapter
+    assert.strictEqual(p.find((x) => x.record.key === "a").type, "Chapter");
+    assert.throws(() => LIB.makeTemplate({ name: "", markerName: "x" }), /nome ao modelo/);
+    assert.throws(() => LIB.makeTemplate({ name: "Nada", color: "keep", type: "keep" }), /pelo menos uma coisa/);
+});
+test("listas com nome: substitui o mesmo nome, ordena, apaga e lê texto estragado", () => {
+    let list = [];
+    list = LIB.upsert(list, { name: "beta", keys: ["1"] });
+    list = LIB.upsert(list, { name: "Alfa", keys: ["2"] });
+    list = LIB.upsert(list, { name: "BETA", keys: ["3"] });
+    assert.deepStrictEqual(list.map((x) => x.name), ["Alfa", "BETA"]);
+    assert.deepStrictEqual(LIB.find(list, "beta").keys, ["3"]);
+    assert.deepStrictEqual(LIB.remove(list, "alfa").map((x) => x.name), ["BETA"]);
+    assert.deepStrictEqual(LIB.parseList("{quebrado"), []);
+    assert.deepStrictEqual(LIB.parseList("[1,{\"name\":\"\"},{\"name\":\"ok\"}]").map((x) => x.name), ["ok"]);
+});
+test("seleção salva: acha o que está na lista e conta o que sumiu", () => {
+    const saved = LIB.makeSelection(" Minha ", ["a", "c", "sumiu"]);
+    assert.strictEqual(saved.name, "Minha");
+    const res = LIB.resolveSelection(saved, RECS.filter((r) => r.key !== "c"));
+    assert.deepStrictEqual(Object.keys(res.selected), ["a"]);
+    assert.deepStrictEqual([res.found, res.missing], [1, 2]);
+    assert.throws(() => LIB.makeSelection("", ["a"]), /nome à seleção/);
+    assert.throws(() => LIB.makeSelection("x", []), /Selecione marcadores/);
+});
+
+// ---------------------------------------------------------------------------
 // Exportação (fase 1)
 // ---------------------------------------------------------------------------
 
@@ -401,7 +488,7 @@ test("signature muda quando qualquer campo muda", () => {
     assert.notStrictEqual(M.signature(RECS.slice(1)), base);
 });
 
-const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js"];
+const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js", "core/library.js"];
 
 function literalCalls(src, fnNames) {
     const out = [];

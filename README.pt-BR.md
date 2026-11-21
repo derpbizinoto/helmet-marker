@@ -18,6 +18,10 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 - Edição em massa de cor, nome, comentário (substituir ou acrescentar) e tipo; excluir com confirmação. Antes de aplicar, o painel mostra quantos marcadores vão mudar.
 - Mover selecionados X frames, ±1 frame, ±1 segundo, ou tudo a partir do playhead. Toda conta é em frames inteiros.
 - Exportar capítulos do YouTube (com avisos das regras do YouTube) e CSV.
+- Localizar e substituir em nomes e comentários; numeração automática com prefixo/sufixo ("Cena 01, Cena 02…").
+- Duplo clique no nome ou comentário da lista para editar ali mesmo.
+- Modelos de marcador (nome, cor, tipo, comentário): aplicar na seleção ou criar um marcador no playhead.
+- Seleções salvas com nome, por sequência.
 - Atualiza a lista sozinho: ao trocar de sequência e com uma verificação leve a cada poucos segundos (o Premiere não avisa quando um marcador é criado na timeline).
 
 ## Requisitos

@@ -1,5 +1,13 @@
 # Novidades
 
+## 0.3.0 — produtividade (fase 2, parte A)
+
+- Localizar e substituir em nomes e comentários (só no nome, só no comentário ou nos dois; com ou sem diferenciar maiúsculas).
+- Numeração automática dos nomes em ordem de tempo, com prefixo, sufixo, número inicial, passo e zeros à esquerda.
+- Duplo clique no nome ou no comentário edita direto na lista (Enter salva, Esc cancela).
+- Modelos de marcador: aplicar nos selecionados (um Ctrl+Z) ou criar um marcador no playhead (com cor, dois Ctrl+Z).
+- Seleções salvas com nome, guardadas por sequência.
+
 ## 0.2.0 — MVP (fase 1)
 
 - Filtros por texto, cor, tipo, duração e In/Out; seleção com Ctrl/Shift, tudo, limpar, inverter, antes/depois do marcador ou do playhead.

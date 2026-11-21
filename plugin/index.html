@@ -67,6 +67,16 @@
                 </select>
             </div>
 
+            <div class="row-tools">
+                <span class="field-label">Seleções salvas</span>
+                <select id="savedSel" class="input"></select>
+                <div role="button" id="btnSavedLoad" class="btn btn-secondary btn-sm">Selecionar</div>
+                <div role="button" id="btnSavedDelete" class="btn btn-ghost btn-sm">Apagar</div>
+                <span class="sep"></span>
+                <input id="savedName" class="input" type="text" placeholder="Nome da seleção" />
+                <div role="button" id="btnSavedSave" class="btn btn-secondary btn-sm">Salvar seleção</div>
+            </div>
+
             <div class="list-head">
                 <span class="c swatch"></span>
                 <span class="c tc">Timecode</span>
@@ -78,7 +88,7 @@
             <div class="list" id="list"></div>
             <div class="empty" id="empty">Abra uma sequência na timeline e clique em Atualizar.</div>
             <div class="counts" id="counts"></div>
-            <div class="hint">Clique: seleciona e leva o playhead até o marcador. Ctrl+clique: soma ou tira da seleção. Shift+clique: seleciona o intervalo.</div>
+            <div class="hint">Clique: seleciona e leva o playhead até o marcador. Ctrl+clique: soma ou tira da seleção. Shift+clique: seleciona o intervalo. Duplo clique no nome ou no comentário: edita ali mesmo (Enter salva, Esc cancela).</div>
         </section>
 
         <!-- ================= editar ================= -->
@@ -129,6 +139,96 @@
                 <div role="button" id="btnConfirmYes" class="btn btn-danger btn-sm">Confirmar</div>
                 <div role="button" id="btnConfirmNo" class="btn btn-secondary btn-sm">Cancelar</div>
             </div>
+        </section>
+
+        <!-- ================= localizar e numerar ================= -->
+        <section class="card">
+            <div class="card-title">Localizar e numerar</div>
+            <div class="hint top">Vale para os marcadores selecionados.</div>
+
+            <div class="group-label">Localizar e substituir</div>
+            <div class="edit-row">
+                <input id="findText" class="input grow" type="text" placeholder="Procurar" />
+                <input id="replaceText" class="input grow" type="text" placeholder="Trocar por (vazio apaga o texto)" />
+            </div>
+            <div class="edit-row">
+                <select id="findFields" class="input">
+                    <option value="both">No nome e no comentário</option>
+                    <option value="name">Só no nome</option>
+                    <option value="comments">Só no comentário</option>
+                </select>
+                <div role="button" id="chipMatchCase" class="chip">Diferenciar maiúsculas</div>
+                <div role="button" id="btnReplace" class="btn btn-primary btn-sm">Substituir</div>
+                <span class="preview" id="pvReplace"></span>
+            </div>
+
+            <div class="group-label">Numerar os nomes</div>
+            <div class="edit-row">
+                <span class="field-label">Prefixo</span>
+                <input id="numPrefix" class="input" type="text" placeholder="Ex.: Cena" />
+                <span class="field-label">Começa em</span>
+                <input id="numStart" class="input num" type="number" value="1" />
+                <span class="field-label">Passo</span>
+                <input id="numStep" class="input num" type="number" value="1" />
+                <span class="field-label">Dígitos</span>
+                <input id="numDigits" class="input num" type="number" value="2" />
+                <span class="field-label">Sufixo</span>
+                <input id="numSuffix" class="input" type="text" />
+            </div>
+            <div class="edit-row">
+                <div role="button" id="btnNumber" class="btn btn-primary btn-sm">Numerar</div>
+                <span class="preview" id="pvNumber"></span>
+            </div>
+        </section>
+
+        <!-- ================= modelos ================= -->
+        <section class="card">
+            <div class="card-title">Modelos de marcador</div>
+            <div class="edit-row">
+                <select id="tplSelect" class="input grow"></select>
+                <div role="button" id="btnTplApply" class="btn btn-primary btn-sm">Aplicar nos selecionados</div>
+                <div role="button" id="btnTplCreate" class="btn btn-secondary btn-sm">Criar no playhead</div>
+                <div role="button" id="btnTplDelete" class="btn btn-ghost btn-sm">Apagar</div>
+            </div>
+            <div class="edit-row">
+                <span class="preview" id="pvTpl"></span>
+            </div>
+
+            <div class="group-label">Criar ou editar modelo</div>
+            <div class="hint top">Escolher um modelo acima preenche os campos. Salvar com o mesmo nome substitui o modelo. Campo vazio = não muda.</div>
+            <div class="edit-row">
+                <span class="edit-label">Modelo</span>
+                <input id="tplName" class="input grow" type="text" placeholder="Nome do modelo" />
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Nome</span>
+                <input id="tplMarkerName" class="input grow" type="text" placeholder="Nome do marcador" />
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Cor</span>
+                <select id="tplColor" class="input"></select>
+                <span class="field-label">Tipo</span>
+                <select id="tplType" class="input">
+                    <option value="keep">Não mudar</option>
+                    <option value="Comment">Comentário</option>
+                    <option value="Chapter">Capítulo</option>
+                    <option value="Segmentation">Segmentação</option>
+                    <option value="WebLink">Link da Web</option>
+                </select>
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Comentário</span>
+                <input id="tplComment" class="input grow" type="text" placeholder="Texto" />
+                <select id="tplCommentMode" class="input">
+                    <option value="replace">Substituir</option>
+                    <option value="append">Acrescentar no fim</option>
+                    <option value="prepend">Acrescentar no começo</option>
+                </select>
+            </div>
+            <div class="edit-row">
+                <div role="button" id="btnTplSave" class="btn btn-secondary btn-sm">Salvar modelo</div>
+            </div>
+            <div class="hint">"Criar no playhead" cria um marcador novo com o modelo. Se o modelo tiver cor, o Premiere faz em duas etapas: para desfazer, são dois Ctrl+Z.</div>
         </section>
 
         <!-- ================= mover ================= -->
@@ -203,6 +303,7 @@
     <script src="core/selection.js"></script>
     <script src="core/plans.js"></script>
     <script src="core/export.js"></script>
+    <script src="core/library.js"></script>
     <script src="premiere/ppro.js"></script>
     <script src="ui/panel.js"></script>
 </body>
