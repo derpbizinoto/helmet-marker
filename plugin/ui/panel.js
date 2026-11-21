@@ -281,7 +281,8 @@
         var chips = $("colorChips");
         clear(chips);
         colors.forEach(function (c) {
-            var b = document.createElement("button");
+            var b = document.createElement("div");
+            b.setAttribute("role", "button");
             b.className = "chip color-chip" + (state.filters.colors.indexOf(c.index) >= 0 ? " on" : "");
             b.setAttribute("data-color", String(c.index));
             b.setAttribute("title", tr(c.label));
@@ -370,18 +371,24 @@
         });
     }
 
+    function setEnabled(id, ok) {
+        var el = $(id);
+        var base = el.className.replace(/(^|\s)is-disabled(?=\s|$)/g, "").trim();
+        el.className = ok ? base : base + " is-disabled";
+    }
+
     function updateButtons() {
         var ready = !state.busy && hasSeq();
         var n = selected().length;
-        $("btnRefresh").disabled = state.busy;
-        ["btnSelAll", "btnSelNone", "btnSelInvert", "btnSelBefore", "btnSelAfter"].forEach(function (id) { $(id).disabled = !ready; });
-        ["btnColor", "btnName", "btnComment", "btnType", "btnDelete"].forEach(function (id) { $(id).disabled = !(ready && n); });
+        setEnabled("btnRefresh", !state.busy);
+        ["btnSelAll", "btnSelNone", "btnSelInvert", "btnSelBefore", "btnSelAfter"].forEach(function (id) { setEnabled(id, ready); });
+        ["btnColor", "btnName", "btnComment", "btnType", "btnDelete"].forEach(function (id) { setEnabled(id, ready && n); });
         var canMove = ready && (n || state.afterPlayheadOn);
-        ["btnMinusSec", "btnMinusFrame", "btnPlusFrame", "btnPlusSec", "btnMove"].forEach(function (id) { $(id).disabled = !canMove; });
+        ["btnMinusSec", "btnMinusFrame", "btnPlusFrame", "btnPlusSec", "btnMove"].forEach(function (id) { setEnabled(id, canMove); });
         var canExport = ready && exportTargets().length > 0;
-        ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy"].forEach(function (id) { $(id).disabled = !canExport; });
-        $("btnTest").disabled = !ready;
-        $("chipInOut").className = "chip" + (state.inOutOn ? " on" : "");
+        ["btnYtCopy", "btnYtSave", "btnCsvSave", "btnCsvCopy"].forEach(function (id) { setEnabled(id, canExport); });
+        setEnabled("btnTest", ready);
+        $("chipInOut").className = "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled");
         $("chipAfterPlayhead").className = "chip" + (state.afterPlayheadOn ? " on" : "");
     }
 
@@ -572,7 +579,7 @@
         state.filters = S.emptyFilters();
         state.inOutOn = false;
         $("filterText").value = "";
-        $("filterType").value = "";
+        $("filterType").value = "any";   // (o UXP exige <option> com value não vazio)
         $("filterDuration").value = "all";
         state.colorsSig = "";   // redesenha os chips sem "on"
         filtersChanged();
@@ -635,7 +642,16 @@
     }
 
     // ---------- início ----------
-    function on(id, ev, fn) { $(id).addEventListener(ev, fn); }
+    // Botões são <div role="button"> (o UXP não deixa estilizar <button>). Desligado = classe
+    // "is-disabled", e o clique num botão desligado é ignorado aqui.
+    function isDisabled(el) { return /(^|\s)is-disabled(\s|$)/.test(el.className); }
+    function on(id, ev, fn) {
+        var el = $(id);
+        el.addEventListener(ev, function (e) {
+            if (ev === "click" && isDisabled(el)) return;
+            return fn.call(this, e);
+        });
+    }
 
     function init() {
         fitContent();
@@ -658,7 +674,7 @@
 
         // filtros
         on("filterText", "input", function () { state.filters.text = $("filterText").value; filtersChanged(); });
-        on("filterType", "change", function () { state.filters.type = $("filterType").value; filtersChanged(); });
+        on("filterType", "change", function () { var v = $("filterType").value; state.filters.type = v === "any" ? "" : v; filtersChanged(); });
         on("filterDuration", "change", function () { state.filters.duration = $("filterDuration").value; filtersChanged(); });
         on("colorChips", "click", onColorChip);
         on("chipInOut", "click", toggleInOut);

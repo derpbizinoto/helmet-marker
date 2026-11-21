@@ -29,13 +29,13 @@
         <section class="card">
             <div class="toolbar">
                 <div class="seq-info" id="seqInfo">Nenhuma sequência ativa</div>
-                <button id="btnRefresh" class="btn btn-secondary btn-sm">Atualizar</button>
+                <div role="button" id="btnRefresh" class="btn btn-secondary btn-sm">Atualizar</div>
             </div>
 
             <div class="row-tools">
                 <input id="filterText" class="input grow" type="text" placeholder="Buscar no nome ou comentário" />
                 <select id="filterType" class="input">
-                    <option value="">Todos os tipos</option>
+                    <option value="any">Todos os tipos</option>
                     <option value="Comment">Comentário</option>
                     <option value="Chapter">Capítulo</option>
                     <option value="Segmentation">Segmentação</option>
@@ -49,17 +49,17 @@
             </div>
             <div class="row-tools">
                 <div class="chips" id="colorChips"></div>
-                <button id="chipInOut" class="chip" title="Mostra só os marcadores entre o In e o Out da sequência">Só entre In e Out</button>
-                <button id="btnClearFilters" class="btn btn-ghost btn-sm">Limpar filtros</button>
+                <div role="button" id="chipInOut" class="chip" title="Mostra só os marcadores entre o In e o Out da sequência">Só entre In e Out</div>
+                <div role="button" id="btnClearFilters" class="btn btn-ghost btn-sm">Limpar filtros</div>
             </div>
 
             <div class="row-tools">
-                <button id="btnSelAll" class="btn btn-secondary btn-sm">Selecionar tudo</button>
-                <button id="btnSelNone" class="btn btn-secondary btn-sm">Limpar seleção</button>
-                <button id="btnSelInvert" class="btn btn-secondary btn-sm">Inverter</button>
+                <div role="button" id="btnSelAll" class="btn btn-secondary btn-sm">Selecionar tudo</div>
+                <div role="button" id="btnSelNone" class="btn btn-secondary btn-sm">Limpar seleção</div>
+                <div role="button" id="btnSelInvert" class="btn btn-secondary btn-sm">Inverter</div>
                 <span class="sep"></span>
-                <button id="btnSelBefore" class="btn btn-secondary btn-sm">Selecionar antes</button>
-                <button id="btnSelAfter" class="btn btn-secondary btn-sm">Selecionar depois</button>
+                <div role="button" id="btnSelBefore" class="btn btn-secondary btn-sm">Selecionar antes</div>
+                <div role="button" id="btnSelAfter" class="btn btn-secondary btn-sm">Selecionar depois</div>
                 <span class="field-label">de</span>
                 <select id="relRef" class="input">
                     <option value="marker">o marcador clicado</option>
@@ -88,13 +88,13 @@
             <div class="edit-row">
                 <span class="edit-label">Cor</span>
                 <select id="editColor" class="input"></select>
-                <button id="btnColor" class="btn btn-primary btn-sm">Aplicar</button>
+                <div role="button" id="btnColor" class="btn btn-primary btn-sm">Aplicar</div>
                 <span class="preview" id="pvColor"></span>
             </div>
             <div class="edit-row">
                 <span class="edit-label">Nome</span>
                 <input id="editName" class="input grow" type="text" placeholder="Novo nome" />
-                <button id="btnName" class="btn btn-primary btn-sm">Aplicar</button>
+                <div role="button" id="btnName" class="btn btn-primary btn-sm">Aplicar</div>
                 <span class="preview" id="pvName"></span>
             </div>
             <div class="edit-row">
@@ -105,7 +105,7 @@
                     <option value="append">Acrescentar no fim</option>
                     <option value="prepend">Acrescentar no começo</option>
                 </select>
-                <button id="btnComment" class="btn btn-primary btn-sm">Aplicar</button>
+                <div role="button" id="btnComment" class="btn btn-primary btn-sm">Aplicar</div>
                 <span class="preview" id="pvComment"></span>
             </div>
             <div class="edit-row">
@@ -116,18 +116,18 @@
                     <option value="Segmentation">Segmentação</option>
                     <option value="WebLink">Link da Web</option>
                 </select>
-                <button id="btnType" class="btn btn-primary btn-sm">Aplicar</button>
+                <div role="button" id="btnType" class="btn btn-primary btn-sm">Aplicar</div>
                 <span class="preview" id="pvType"></span>
             </div>
             <div class="edit-row">
                 <span class="edit-label"></span>
-                <button id="btnDelete" class="btn btn-danger btn-sm">Excluir selecionados</button>
+                <div role="button" id="btnDelete" class="btn btn-danger btn-sm">Excluir selecionados</div>
                 <span class="preview" id="pvDelete"></span>
             </div>
             <div class="confirm" id="confirmBar">
                 <span id="confirmText"></span>
-                <button id="btnConfirmYes" class="btn btn-danger btn-sm">Confirmar</button>
-                <button id="btnConfirmNo" class="btn btn-secondary btn-sm">Cancelar</button>
+                <div role="button" id="btnConfirmYes" class="btn btn-danger btn-sm">Confirmar</div>
+                <div role="button" id="btnConfirmNo" class="btn btn-secondary btn-sm">Cancelar</div>
             </div>
         </section>
 
@@ -135,18 +135,18 @@
         <section class="card">
             <div class="card-title">Mover</div>
             <div class="edit-row">
-                <button id="btnMinusSec" class="btn btn-secondary btn-sm">−1 s</button>
-                <button id="btnMinusFrame" class="btn btn-secondary btn-sm">−1 frame</button>
-                <button id="btnPlusFrame" class="btn btn-secondary btn-sm">+1 frame</button>
-                <button id="btnPlusSec" class="btn btn-secondary btn-sm">+1 s</button>
+                <div role="button" id="btnMinusSec" class="btn btn-secondary btn-sm">−1 s</div>
+                <div role="button" id="btnMinusFrame" class="btn btn-secondary btn-sm">−1 frame</div>
+                <div role="button" id="btnPlusFrame" class="btn btn-secondary btn-sm">+1 frame</div>
+                <div role="button" id="btnPlusSec" class="btn btn-secondary btn-sm">+1 s</div>
                 <span class="sep"></span>
                 <span class="field-label">Deslocar</span>
                 <input id="moveFrames" class="input num" type="number" value="0" />
                 <span class="field-label">frames</span>
-                <button id="btnMove" class="btn btn-primary btn-sm">Aplicar</button>
+                <div role="button" id="btnMove" class="btn btn-primary btn-sm">Aplicar</div>
             </div>
             <div class="edit-row">
-                <button id="chipAfterPlayhead" class="chip">Mover tudo a partir do playhead (ignora a seleção)</button>
+                <div role="button" id="chipAfterPlayhead" class="chip">Mover tudo a partir do playhead (ignora a seleção)</div>
                 <span class="preview" id="pvMove"></span>
             </div>
         </section>
@@ -158,8 +158,8 @@
 
             <div class="group-label">Capítulos do YouTube</div>
             <div class="edit-row">
-                <button id="btnYtCopy" class="btn btn-primary btn-sm">Copiar</button>
-                <button id="btnYtSave" class="btn btn-secondary btn-sm">Salvar .txt</button>
+                <div role="button" id="btnYtCopy" class="btn btn-primary btn-sm">Copiar</div>
+                <div role="button" id="btnYtSave" class="btn btn-secondary btn-sm">Salvar .txt</div>
                 <span class="preview" id="pvYt"></span>
             </div>
             <div class="warnings" id="ytWarnings"></div>
@@ -172,8 +172,8 @@
                     <option value=";">Ponto e vírgula (Excel em português)</option>
                     <option value=",">Vírgula</option>
                 </select>
-                <button id="btnCsvSave" class="btn btn-primary btn-sm">Salvar .csv</button>
-                <button id="btnCsvCopy" class="btn btn-secondary btn-sm">Copiar</button>
+                <div role="button" id="btnCsvSave" class="btn btn-primary btn-sm">Salvar .csv</div>
+                <div role="button" id="btnCsvCopy" class="btn btn-secondary btn-sm">Copiar</div>
             </div>
         </section>
 
@@ -186,7 +186,7 @@
                 <span class="field-label">marcadores, a cada</span>
                 <input id="testStep" class="input num" type="number" value="12" />
                 <span class="field-label">frames</span>
-                <button id="btnTest" class="btn btn-secondary btn-sm">Criar</button>
+                <div role="button" id="btnTest" class="btn btn-secondary btn-sm">Criar</div>
             </div>
             <div class="hint">Marcadores do tipo Comentário a partir do início da sequência, numa única operação.</div>
             <div class="group-label">Diagnóstico</div>

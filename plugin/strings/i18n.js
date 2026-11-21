@@ -275,7 +275,11 @@ var HMI18n = (function () {
             var k = kids[i];
             if (k.nodeType === 3) {
                 var key = String(k.nodeValue || "").trim();
-                if (key && hasOwn(EN, key)) out.push({ node: k, pt: k.nodeValue, key: key });
+                if (!key || !hasOwn(EN, key)) continue;
+                // <option>: o UXP não redesenha a lista se só o texto interno mudar; a lista
+                // inteira é recriada (ver apply)
+                if (node.tagName === "OPTION") out.push({ option: node, key: key });
+                else out.push({ node: k, pt: k.nodeValue, key: key });
             } else if (k.nodeType === 1) {
                 if (k.tagName === "SCRIPT" || k.tagName === "STYLE") continue;
                 ATTRS.forEach(function (attr) {
@@ -290,11 +294,32 @@ var HMI18n = (function () {
     function apply() {
         if (typeof document === "undefined" || !document.body) return;
         if (!fixed) { fixed = []; walk(document.body, fixed); }
+        var selects = [];
         fixed.forEach(function (f) {
             var text = t(f.key);
-            if (f.node) f.node.nodeValue = f.pt.replace(f.key, function () { return text; });
+            if (f.option) {
+                f.option.textContent = text;
+                var sel = f.option.parentNode;
+                if (sel && selects.indexOf(sel) < 0) selects.push(sel);
+            } else if (f.node) f.node.nodeValue = f.pt.replace(f.key, function () { return text; });
             else f.el.setAttribute(f.attr, text);
         });
+        selects.forEach(rebuildSelect);
+    }
+
+    // Recria as <option> de uma lista com os textos atuais e devolve a escolha que estava.
+    // As <option> novas entram na lista "fixed" no lugar das antigas.
+    function rebuildSelect(sel) {
+        var value = sel.value;
+        var old = Array.prototype.slice.call(sel.childNodes).filter(function (n) { return n.tagName === "OPTION"; });
+        old.forEach(function (o) {
+            var n = document.createElement("option");
+            n.setAttribute("value", o.getAttribute("value") || "");
+            n.textContent = o.textContent;
+            sel.replaceChild(n, o);
+            fixed.forEach(function (f) { if (f.option === o) f.option = n; });
+        });
+        sel.value = value;
     }
 
     function setLang(next) {
