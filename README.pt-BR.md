@@ -10,7 +10,7 @@ Versão atual: **1.0.0**. O que mudou está no [CHANGELOG.md](CHANGELOG.md).
 
 Gratuito e de código aberto ([licença MIT](LICENSE)).
 
-![Painel do Helmet Marker](docs/screenshots/pt/painel.png)
+<img src="docs/screenshots/pt/painel.png" alt="Painel do Helmet Marker" width="420">
 
 **[⬇ Baixar a versão mais nova](https://github.com/derpbizinoto/helmet-marker/releases/latest)**: Premiere Pro 26.5 ou mais novo, Windows ou macOS.
 

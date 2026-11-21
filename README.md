@@ -10,7 +10,7 @@ Current version: **1.0.0**. What changed is in [CHANGELOG.md](CHANGELOG.md) (Por
 
 Free and open source ([MIT license](LICENSE)).
 
-![Helmet Marker panel](docs/screenshots/en/painel.png)
+<img src="docs/screenshots/en/painel.png" alt="Helmet Marker panel" width="420">
 
 **[⬇ Download the latest version](https://github.com/derpbizinoto/helmet-marker/releases/latest)**: Premiere Pro 26.5 or newer, Windows or macOS.
 
