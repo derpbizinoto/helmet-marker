@@ -6,9 +6,19 @@ A **UXP** plugin for Adobe Premiere Pro: a panel to select and edit markers in b
 
 Same visual identity as [Helmet DL](https://github.com/derpbizinoto/helmet-dl), [Helmet Cutter](https://github.com/derpbizinoto/helmet-cutter) and [Helmet Library](https://github.com/derpbizinoto/helmet-library): Classic theme (Violet Terminal), Geo for the name and Roboto everywhere else.
 
-Current version: **0.1.0** — proof of concept (phase 0). What changed is in [CHANGELOG.md](CHANGELOG.md) (Portuguese).
+Current version: **0.2.0** — MVP (phase 1). What changed is in [CHANGELOG.md](CHANGELOG.md) (Portuguese).
 
 Free and open source ([MIT license](LICENSE)).
+
+## What it does
+
+- Lists the active sequence markers (drop-frame aware timecode, name, comment, color, type, duration). Clicking moves the playhead to the marker.
+- Selection with click, Ctrl+click and Shift+click; select all, clear, invert; select before/after the clicked marker or the playhead.
+- Filters by text, color, type, duration (point or ranged) and the sequence In/Out.
+- Bulk edit of color, name, comment (replace or append) and type; delete with confirmation. Before applying, the panel shows how many markers will change.
+- Move selected markers by X frames, ±1 frame, ±1 second, or everything from the playhead on. All math is done in whole frames.
+- Export YouTube chapters (with warnings for YouTube rules) and CSV.
+- Keeps the list up to date: when the sequence changes and with a light check every few seconds (Premiere does not notify when a marker is added in the timeline).
 
 ## Requirements
 
@@ -60,7 +70,7 @@ They cover the part that doesn't depend on Premiere (`plugin\core\`): frame and 
 
 | Folder | Contents |
 |---|---|
-| `plugin/core/` | Pure logic (frames, timecode, selection, change plans). No Premiere calls; tested with Node. |
+| `plugin/core/` | Pure logic (frames, timecode, filters, selection, change plans, export). No Premiere calls; tested with Node. |
 | `plugin/premiere/` | Thin layer that reads markers and applies changes in a single transaction. |
 | `plugin/ui/` | The panel. |
 | `plugin/strings/` | All interface text (Portuguese and English). |

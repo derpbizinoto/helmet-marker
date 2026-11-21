@@ -6,9 +6,19 @@ Plugin **UXP** para o Adobe Premiere Pro: um painel para selecionar e editar mar
 
 Mesma identidade visual do [Helmet DL](https://github.com/derpbizinoto/helmet-dl), [Helmet Cutter](https://github.com/derpbizinoto/helmet-cutter) e [Helmet Library](https://github.com/derpbizinoto/helmet-library): tema Clássico (Violet Terminal), Geo no nome e Roboto no resto.
 
-Versão atual: **0.1.0** — prova de conceito (fase 0). O que mudou está no [CHANGELOG.md](CHANGELOG.md).
+Versão atual: **0.2.0** — MVP (fase 1). O que mudou está no [CHANGELOG.md](CHANGELOG.md).
 
 Gratuito e de código aberto ([licença MIT](LICENSE)).
+
+## O que faz
+
+- Lista os marcadores da sequência ativa (timecode com drop-frame, nome, comentário, cor, tipo, duração). Clique leva o playhead até o marcador.
+- Seleção com clique, Ctrl+clique e Shift+clique; selecionar tudo, limpar, inverter; selecionar antes/depois do marcador clicado ou do playhead.
+- Filtros por texto, cor, tipo, duração (pontual ou com duração) e In/Out da sequência.
+- Edição em massa de cor, nome, comentário (substituir ou acrescentar) e tipo; excluir com confirmação. Antes de aplicar, o painel mostra quantos marcadores vão mudar.
+- Mover selecionados X frames, ±1 frame, ±1 segundo, ou tudo a partir do playhead. Toda conta é em frames inteiros.
+- Exportar capítulos do YouTube (com avisos das regras do YouTube) e CSV.
+- Atualiza a lista sozinho: ao trocar de sequência e com uma verificação leve a cada poucos segundos (o Premiere não avisa quando um marcador é criado na timeline).
 
 ## Requisitos
 
@@ -62,7 +72,7 @@ Cobrem a parte que não depende do Premiere (`plugin\core\`): contas de frame e 
 
 | Pasta | O que tem |
 |---|---|
-| `plugin/core/` | Lógica pura (frames, timecode, seleção, planos de alteração). Nenhuma chamada ao Premiere; testada no Node. |
+| `plugin/core/` | Lógica pura (frames, timecode, filtros, seleção, planos de alteração, exportação). Nenhuma chamada ao Premiere; testada no Node. |
 | `plugin/premiere/` | Camada fina que lê marcadores e aplica as alterações numa única transação. |
 | `plugin/ui/` | O painel. |
 | `plugin/strings/` | Todos os textos da interface (português e inglês). |

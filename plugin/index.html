@@ -10,8 +10,8 @@
         <div class="brand">
             <img class="brand-logo" src="img/logo.png" alt="" width="34" height="28" />
             <div class="brand-text">
-                <h1>HELMET MARKER</h1>
-                <div class="sub-info"><span id="version"></span> · <span>Prova de conceito</span></div>
+                <img class="brand-title" src="img/title.png" alt="HELMET MARKER" width="153" height="14" />
+                <div class="sub-info" id="version"></div>
             </div>
         </div>
         <div class="lang">
@@ -24,11 +24,49 @@
     </header>
 
     <main class="content" id="content">
-        <section class="card list-card">
+
+        <!-- ================= lista ================= -->
+        <section class="card">
             <div class="toolbar">
                 <div class="seq-info" id="seqInfo">Nenhuma sequência ativa</div>
                 <button id="btnRefresh" class="btn btn-secondary btn-sm">Atualizar</button>
             </div>
+
+            <div class="row-tools">
+                <input id="filterText" class="input grow" type="text" placeholder="Buscar no nome ou comentário" />
+                <select id="filterType" class="input">
+                    <option value="">Todos os tipos</option>
+                    <option value="Comment">Comentário</option>
+                    <option value="Chapter">Capítulo</option>
+                    <option value="Segmentation">Segmentação</option>
+                    <option value="WebLink">Link da Web</option>
+                </select>
+                <select id="filterDuration" class="input">
+                    <option value="all">Pontuais e com duração</option>
+                    <option value="point">Só pontuais</option>
+                    <option value="ranged">Só com duração</option>
+                </select>
+            </div>
+            <div class="row-tools">
+                <div class="chips" id="colorChips"></div>
+                <button id="chipInOut" class="chip" title="Mostra só os marcadores entre o In e o Out da sequência">Só entre In e Out</button>
+                <button id="btnClearFilters" class="btn btn-ghost btn-sm">Limpar filtros</button>
+            </div>
+
+            <div class="row-tools">
+                <button id="btnSelAll" class="btn btn-secondary btn-sm">Selecionar tudo</button>
+                <button id="btnSelNone" class="btn btn-secondary btn-sm">Limpar seleção</button>
+                <button id="btnSelInvert" class="btn btn-secondary btn-sm">Inverter</button>
+                <span class="sep"></span>
+                <button id="btnSelBefore" class="btn btn-secondary btn-sm">Selecionar antes</button>
+                <button id="btnSelAfter" class="btn btn-secondary btn-sm">Selecionar depois</button>
+                <span class="field-label">de</span>
+                <select id="relRef" class="input">
+                    <option value="marker">o marcador clicado</option>
+                    <option value="playhead">o playhead</option>
+                </select>
+            </div>
+
             <div class="list-head">
                 <span class="c swatch"></span>
                 <span class="c tc">Timecode</span>
@@ -39,37 +77,119 @@
             </div>
             <div class="list" id="list"></div>
             <div class="empty" id="empty">Abra uma sequência na timeline e clique em Atualizar.</div>
-            <div class="hint">Clique para selecionar. Ctrl+clique para adicionar ou tirar da seleção.</div>
-            <div class="hint" id="selInfo"></div>
+            <div class="counts" id="counts"></div>
+            <div class="hint">Clique: seleciona e leva o playhead até o marcador. Ctrl+clique: soma ou tira da seleção. Shift+clique: seleciona o intervalo.</div>
         </section>
 
+        <!-- ================= editar ================= -->
         <section class="card">
-            <div class="card-title">Testes da fase 0</div>
+            <div class="card-title">Editar selecionados</div>
 
-            <div class="action-row">
-                <button id="btnMove" class="btn btn-primary">Mover +10 frames</button>
-                <span class="hint">Com 1 marcador selecionado.</span>
+            <div class="edit-row">
+                <span class="edit-label">Cor</span>
+                <select id="editColor" class="input"></select>
+                <button id="btnColor" class="btn btn-primary btn-sm">Aplicar</button>
+                <span class="preview" id="pvColor"></span>
             </div>
-
-            <div class="action-row">
-                <select id="colorSelect" class="input"></select>
-                <button id="btnColor" class="btn btn-primary">Mudar cor</button>
-                <span class="hint">Com 2 marcadores selecionados (uma única operação).</span>
+            <div class="edit-row">
+                <span class="edit-label">Nome</span>
+                <input id="editName" class="input grow" type="text" placeholder="Novo nome" />
+                <button id="btnName" class="btn btn-primary btn-sm">Aplicar</button>
+                <span class="preview" id="pvName"></span>
             </div>
+            <div class="edit-row">
+                <span class="edit-label">Comentário</span>
+                <input id="editComment" class="input grow" type="text" placeholder="Texto" />
+                <select id="editCommentMode" class="input">
+                    <option value="replace">Substituir</option>
+                    <option value="append">Acrescentar no fim</option>
+                    <option value="prepend">Acrescentar no começo</option>
+                </select>
+                <button id="btnComment" class="btn btn-primary btn-sm">Aplicar</button>
+                <span class="preview" id="pvComment"></span>
+            </div>
+            <div class="edit-row">
+                <span class="edit-label">Tipo</span>
+                <select id="editType" class="input">
+                    <option value="Comment">Comentário</option>
+                    <option value="Chapter">Capítulo</option>
+                    <option value="Segmentation">Segmentação</option>
+                    <option value="WebLink">Link da Web</option>
+                </select>
+                <button id="btnType" class="btn btn-primary btn-sm">Aplicar</button>
+                <span class="preview" id="pvType"></span>
+            </div>
+            <div class="edit-row">
+                <span class="edit-label"></span>
+                <button id="btnDelete" class="btn btn-danger btn-sm">Excluir selecionados</button>
+                <span class="preview" id="pvDelete"></span>
+            </div>
+            <div class="confirm" id="confirmBar">
+                <span id="confirmText"></span>
+                <button id="btnConfirmYes" class="btn btn-danger btn-sm">Confirmar</button>
+                <button id="btnConfirmNo" class="btn btn-secondary btn-sm">Cancelar</button>
+            </div>
+        </section>
 
-            <div class="group-label">Gerador de marcadores de teste</div>
-            <div class="action-row">
-                <span class="field-label">Quantidade</span>
+        <!-- ================= mover ================= -->
+        <section class="card">
+            <div class="card-title">Mover</div>
+            <div class="edit-row">
+                <button id="btnMinusSec" class="btn btn-secondary btn-sm">−1 s</button>
+                <button id="btnMinusFrame" class="btn btn-secondary btn-sm">−1 frame</button>
+                <button id="btnPlusFrame" class="btn btn-secondary btn-sm">+1 frame</button>
+                <button id="btnPlusSec" class="btn btn-secondary btn-sm">+1 s</button>
+                <span class="sep"></span>
+                <span class="field-label">Deslocar</span>
+                <input id="moveFrames" class="input num" type="number" value="0" />
+                <span class="field-label">frames</span>
+                <button id="btnMove" class="btn btn-primary btn-sm">Aplicar</button>
+            </div>
+            <div class="edit-row">
+                <button id="chipAfterPlayhead" class="chip">Mover tudo a partir do playhead (ignora a seleção)</button>
+                <span class="preview" id="pvMove"></span>
+            </div>
+        </section>
+
+        <!-- ================= exportar ================= -->
+        <section class="card">
+            <div class="card-title">Exportar</div>
+            <div class="hint top">Exporta os marcadores selecionados. Sem seleção, exporta todos os que estão na lista (respeitando os filtros).</div>
+
+            <div class="group-label">Capítulos do YouTube</div>
+            <div class="edit-row">
+                <button id="btnYtCopy" class="btn btn-primary btn-sm">Copiar</button>
+                <button id="btnYtSave" class="btn btn-secondary btn-sm">Salvar .txt</button>
+                <span class="preview" id="pvYt"></span>
+            </div>
+            <div class="warnings" id="ytWarnings"></div>
+            <div class="text-preview" id="ytPreview"></div>
+
+            <div class="group-label">Planilha (CSV)</div>
+            <div class="edit-row">
+                <span class="field-label">Separador</span>
+                <select id="csvSep" class="input">
+                    <option value=";">Ponto e vírgula (Excel em português)</option>
+                    <option value=",">Vírgula</option>
+                </select>
+                <button id="btnCsvSave" class="btn btn-primary btn-sm">Salvar .csv</button>
+                <button id="btnCsvCopy" class="btn btn-secondary btn-sm">Copiar</button>
+            </div>
+        </section>
+
+        <!-- ================= testes e diagnóstico ================= -->
+        <section class="card">
+            <div class="card-title">Ferramentas de teste</div>
+            <div class="edit-row">
+                <span class="field-label">Criar</span>
                 <input id="testCount" class="input num" type="number" value="500" />
-                <span class="field-label">a cada (frames)</span>
+                <span class="field-label">marcadores, a cada</span>
                 <input id="testStep" class="input num" type="number" value="12" />
-                <button id="btnTest" class="btn btn-secondary">Criar</button>
+                <span class="field-label">frames</span>
+                <button id="btnTest" class="btn btn-secondary btn-sm">Criar</button>
             </div>
-            <div class="hint">Cria marcadores do tipo Comentário a partir do início da sequência, numa única operação.</div>
-        </section>
-
-        <section class="card">
-            <div class="card-title">Diagnóstico</div>
+            <div class="hint">Marcadores do tipo Comentário a partir do início da sequência, numa única operação.</div>
+            <div class="group-label">Diagnóstico</div>
             <div class="diag" id="diag"></div>
         </section>
     </main>
@@ -80,6 +200,9 @@
     <script src="strings/i18n.js"></script>
     <script src="core/timecode.js"></script>
     <script src="core/markers.js"></script>
+    <script src="core/selection.js"></script>
+    <script src="core/plans.js"></script>
+    <script src="core/export.js"></script>
     <script src="premiere/ppro.js"></script>
     <script src="ui/panel.js"></script>
 </body>

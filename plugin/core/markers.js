@@ -128,7 +128,16 @@
         return out;
     }
 
+    // "Impressão digital" da lista: muda se qualquer marcador for criado, apagado, movido ou
+    // editado. A verificação periódica relê e só redesenha o painel se ela mudar.
+    function signature(records) {
+        return records.map(function (r) {
+            return [r.key, r.startTicks, r.durationFrames, r.colorIndex, r.type, r.name, r.comments].join("");
+        }).join("");
+    }
+
     return {
+        signature: signature,
         assignKeys: assignKeys,
         buildColorTable: buildColorTable,
         colorFor: colorFor,

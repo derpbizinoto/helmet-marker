@@ -243,7 +243,165 @@ test("planTestMarkers", () => {
 // Traduções
 // ---------------------------------------------------------------------------
 
-const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js"];
+// ---------------------------------------------------------------------------
+// Filtros e seleção (fase 1)
+// ---------------------------------------------------------------------------
+
+const S = require(path.join(ROOT, "core", "selection.js"));
+const PL = require(path.join(ROOT, "core", "plans.js"));
+const X = require(path.join(ROOT, "core", "export.js"));
+
+function rec(key, frame, extra) {
+    return Object.assign({ key, startFrame: frame, startTicks: frame * 1000, name: "", comments: "", type: "Comment", colorIndex: 0, durationFrames: 0 }, extra || {});
+}
+const RECS = [
+    rec("a", 0, { name: "Abertura", colorIndex: 0 }),
+    rec("b", 100, { name: "Cena da cozinha", comments: "Revisar áudio", colorIndex: 1 }),
+    rec("c", 200, { name: "Entrevista", type: "Chapter", colorIndex: 1, durationFrames: 50 }),
+    rec("d", 300, { name: "Créditos", comments: "fim", colorIndex: 2 })
+];
+const keysOf = (sel) => Object.keys(sel).sort();
+
+test("filtro de texto ignora maiúsculas e acentos, em nome e comentário", () => {
+    const f = S.emptyFilters();
+    f.text = "AUDIO";
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["b"]);
+    f.text = "creditos fim";
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["d"]);
+});
+test("filtro por cor, tipo, duração e In/Out", () => {
+    const f = S.emptyFilters();
+    f.colors = [1];
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["b", "c"]);
+    f.colors = []; f.type = "chapter";
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["c"]);
+    f.type = ""; f.duration = "point";
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["a", "b", "d"]);
+    f.duration = "ranged";
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["c"]);
+    f.duration = "all"; f.inOut = { inFrame: 100, outFrame: 200 };
+    assert.deepStrictEqual(S.applyFilters(RECS, f).map((r) => r.key), ["b", "c"]);
+    assert.strictEqual(S.isFiltering(S.emptyFilters()), false);
+});
+test("seleção: clique, Ctrl, Shift e Ctrl+Shift", () => {
+    const keys = ["a", "b", "c", "d"];
+    let st = S.click({ selected: {}, anchor: null }, "b", {}, keys);
+    assert.deepStrictEqual(keysOf(st.selected), ["b"]);
+    st = S.click(st, "d", { shift: true }, keys);
+    assert.deepStrictEqual(keysOf(st.selected), ["b", "c", "d"]);
+    assert.strictEqual(st.anchor, "b");
+    st = S.click(st, "c", { ctrl: true }, keys);
+    assert.deepStrictEqual(keysOf(st.selected), ["b", "d"]);
+    assert.strictEqual(st.anchor, "c");
+    st = S.click(st, "a", { ctrl: true, shift: true }, keys);
+    assert.deepStrictEqual(keysOf(st.selected), ["a", "b", "c", "d"]);
+    st = S.click(st, "d", { shift: true }, keys);   // Shift sem Ctrl substitui
+    assert.deepStrictEqual(keysOf(st.selected), ["c", "d"]);
+});
+test("selecionar tudo, inverter e manter só os visíveis", () => {
+    assert.deepStrictEqual(keysOf(S.selectAll(["a", "b"])), ["a", "b"]);
+    assert.deepStrictEqual(keysOf(S.invert({ a: true, z: true }, ["a", "b", "c"])), ["b", "c"]);
+    assert.deepStrictEqual(keysOf(S.keepOnly({ a: true, z: true }, ["a", "b"])), ["a"]);
+    assert.strictEqual(S.count({ a: true, b: false }), 1);
+});
+test("antes/depois do playhead e do marcador", () => {
+    assert.deepStrictEqual(keysOf(S.selectRelative(RECS, { frame: 200 }, "before")), ["a", "b"]);
+    assert.deepStrictEqual(keysOf(S.selectRelative(RECS, { frame: 200 }, "after")), ["c", "d"]);
+    assert.deepStrictEqual(keysOf(S.selectRelative(RECS, { key: "b" }, "before")), ["a"]);
+    assert.deepStrictEqual(keysOf(S.selectRelative(RECS, { key: "b" }, "after")), ["c", "d"]);
+    assert.throws(() => S.selectRelative(RECS, { key: "zz" }, "after"), /não está na lista/);
+});
+
+// ---------------------------------------------------------------------------
+// Planos de alteração (fase 1)
+// ---------------------------------------------------------------------------
+
+test("planos só incluem o que realmente muda", () => {
+    assert.deepStrictEqual(PL.planColor(RECS, 1).map((p) => p.record.key), ["a", "d"]);
+    assert.deepStrictEqual(PL.planName(RECS, "Entrevista").map((p) => p.record.key), ["a", "b", "d"]);
+    assert.deepStrictEqual(PL.planType(RECS, "chapter").map((p) => p.record.key), ["a", "b", "d"]);
+    assert.strictEqual(PL.planType(RECS, "WEBLINK")[0].type, "WebLink");
+    assert.throws(() => PL.planType(RECS, "Cue"), /inválido/);
+    assert.throws(() => PL.planColor(RECS, "x"), /cor/);
+    assert.throws(() => PL.planName(RECS, "  "), /nome/);
+});
+test("comentário: substituir e acrescentar", () => {
+    assert.strictEqual(PL.newComment("velho", "novo", "replace"), "novo");
+    assert.strictEqual(PL.newComment("velho", "novo", "append"), "velho novo");
+    assert.strictEqual(PL.newComment("velho", "novo", "prepend"), "novo velho");
+    assert.strictEqual(PL.newComment("", "novo", "append"), "novo");
+    assert.strictEqual(PL.newComment("velho", "", "append"), "velho");
+    const p = PL.planComments(RECS, "OK", "append");
+    assert.deepStrictEqual(p.map((x) => x.comments), ["OK", "Revisar áudio OK", "OK", "fim OK"]);
+    assert.strictEqual(PL.planComments(RECS, "fim", "replace").length, 3);
+    assert.throws(() => PL.planComments(RECS, "x", "outro"));
+});
+test("mover: frames inteiros, ±1 s pelo fps nominal e após o playhead", () => {
+    assert.deepStrictEqual(PL.planShift(RECS, 5).map((p) => p.toFrame), [5, 105, 205, 305]);
+    assert.deepStrictEqual(PL.planShift(RECS, 0), []);
+    assert.throws(() => PL.planShift(RECS, -1), /antes do início/);
+    assert.throws(() => PL.planShift(RECS, 0.5), /inteiro/);
+    assert.strictEqual(PL.secondsToFrames(1, T.rateInfo(NTSC["29.97"])), 30);
+    assert.strictEqual(PL.secondsToFrames(1, T.rateInfo(NTSC["23.976"])), 24);
+    assert.strictEqual(PL.secondsToFrames(1, T.rateInfo(25)), 25);
+    assert.deepStrictEqual(PL.afterPlayhead(RECS, 200).map((r) => r.key), ["c", "d"]);
+    assert.deepStrictEqual(PL.planRemove([RECS[0]]), [{ record: RECS[0], remove: true }]);
+});
+
+// ---------------------------------------------------------------------------
+// Exportação (fase 1)
+// ---------------------------------------------------------------------------
+
+test("capítulos do YouTube: começa em 00:00, ordenado, segundos reais", () => {
+    const info = T.rateInfo(25);
+    const r = X.youtubeChapters([rec("x", 25 * 75, { name: "Meio" }), rec("y", 0, { name: "Intro" }), rec("z", 25 * 200, { name: "Fim" })], info);
+    assert.strictEqual(r.text, "00:00 Intro\n01:15 Meio\n03:20 Fim");
+    assert.deepStrictEqual(r.warnings, []);
+});
+test("capítulos: em 29,97 usa tempo de relógio (frame 1800 = 01:00)", () => {
+    const info = T.rateInfo(NTSC["29.97"]);
+    const r = X.youtubeChapters([rec("a", 0, { name: "A" }), rec("b", 1800, { name: "B" }), rec("c", 17982, { name: "C" })], info);
+    assert.strictEqual(r.text, "00:00 A\n01:00 B\n09:59 C");   // 17982 frames = 599,99 s
+});
+test("capítulos: horas e título pelo comentário", () => {
+    const info = T.rateInfo(25);
+    const r = X.youtubeChapters([rec("a", 0, { name: "A" }), rec("b", 25 * 3725, { comments: "Só comentário" })], info);
+    assert.strictEqual(r.text, "0:00:00 A\n1:02:05 Só comentário");
+});
+test("capítulos: avisos (sem 00:00, poucos, curtos, sem título)", () => {
+    const info = T.rateInfo(25);
+    const r = X.youtubeChapters([rec("a", 50, { name: "A" }), rec("b", 100)], info);
+    assert.strictEqual(r.warnings.length, 4);
+    assert.ok(/00:00/.test(r.warnings[0]));
+    const ctx = loadI18n("en");
+    r.warnings.forEach((w) => assert.notStrictEqual(ctx.trMsg(w), w, "sem tradução: " + w));
+    assert.deepStrictEqual(X.youtubeChapters([], info).warnings, ["Nenhum marcador para exportar."]);
+});
+test("CSV: BOM, separador, aspas e vírgula decimal", () => {
+    const info = T.rateInfo(25);
+    const out = X.csv([rec("b", 50, { name: "Nome; com \"aspas\"", comments: "linha1\nlinha2", durationFrames: 25 }), rec("a", 0, { name: "A" })],
+        { sep: ";", info, dropFrame: false, startFrame: 0 });
+    assert.ok(out.startsWith("﻿"));
+    const lines = out.slice(1).split("\r\n");
+    assert.strictEqual(lines[0], "Timecode;Frame;Segundos;Nome;Comentário;Cor;Tipo;Duração;Duração (frames)");
+    assert.strictEqual(lines[1], "00:00:00:00;0;0,000;A;;0;Comment;;0");
+    assert.strictEqual(lines[2], "00:00:02:00;50;2,000;\"Nome; com \"\"aspas\"\"\";\"linha1\nlinha2\";0;Comment;00:00:01:00;25");
+    const comma = X.csv([rec("a", 25, { name: "x,y" })], { sep: ",", info, dropFrame: false, startFrame: 0 });
+    assert.ok(comma.indexOf("00:00:01:00,25,1.000,\"x,y\"") > 0);
+});
+test("CSV usa timecode drop-frame e início da sequência", () => {
+    const info = T.rateInfo(NTSC["29.97"]);
+    const out = X.csv([rec("a", 1800)], { sep: ";", info, dropFrame: true, startFrame: 107892 });
+    assert.ok(out.indexOf("\"01:01:00;02\";1800;60,060") > 0);   // timecode DF tem ";" e vai entre aspas
+});
+test("signature muda quando qualquer campo muda", () => {
+    const base = M.signature(RECS);
+    assert.strictEqual(M.signature(RECS.map((r) => Object.assign({}, r))), base);
+    assert.notStrictEqual(M.signature(RECS.map((r, i) => i === 2 ? Object.assign({}, r, { comments: "x" }) : r)), base);
+    assert.notStrictEqual(M.signature(RECS.slice(1)), base);
+});
+
+const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js"];
 
 function literalCalls(src, fnNames) {
     const out = [];

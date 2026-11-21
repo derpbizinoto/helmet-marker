@@ -17,6 +17,15 @@
 //   marker.createSetColorByIndexAction (25.6), marker.guid (26.3)
 //   Constants.MarkerColor (25.6; MAGENTA 26.5), Constants.VideoDisplayFormatType (25.6)
 //   EventManager.addGlobalEventListener (25.6), Constants.SequenceEvent / ProjectEvent (25.6)
+//   sequence.getPlayerPosition / setPlayerPosition (25.6), sequence.getInPoint / getOutPoint (25.6)
+//   markers.createRemoveMarkerAction (25.6), marker.createSetNameAction / createSetCommentsAction /
+//   createSetTypeAction (25.6; tipos "Comment", "Chapter", "Segmentation", "WebLink")
+// Fora do Premiere (API UXP, conferida em developer.adobe.com/premiere-pro/uxp/uxp-api/):
+//   require("uxp").storage.localFileSystem.getFileForSaving(nome, { types }) -> File ou null;
+//   File.write(texto) (UTF-8); navigator.clipboard.writeText (UXP 6.0) / setContent.
+//   Permissões no manifest: localFileSystem "request" e clipboard "readAndWrite".
+// Vêm do exemplo oficial (uxp-premiere-pro-samples), não da referência, por isso têm reserva:
+//   Marker.MARKER_TYPE_COMMENT e TickTime.TIME_ZERO.
 var HMPremiere = (function () {
     "use strict";
 
@@ -154,19 +163,77 @@ var HMPremiere = (function () {
         return ppro().TickTime.createWithFrameAndFrameRate(frame, ctx.frameRate);
     }
 
-    // plan: saída de HMMarkers.planMove
-    function moveMarkers(ctx, plan, undoLabel) {
-        if (!ctx.markersObj) throw new Error("Atualize a lista antes de alterar marcadores.");
-        var targets = plan.map(function (p) { return { marker: p.record.marker, time: tickAtFrame(ctx, p.toFrame) }; });
-        return runTransaction(ctx, undoLabel, function (add) {
-            targets.forEach(function (t) { add(ctx.markersObj.createMoveMarkerAction(t.marker, t.time)); });
-        });
+    // Valor que createSetTypeAction espera para cada tipo (constante do exemplo oficial, se
+    // existir; senão o texto que a referência documenta).
+    function typeValue(type) {
+        var mk = ppro().Marker || {};
+        var map = {
+            Comment: mk.MARKER_TYPE_COMMENT,
+            Chapter: mk.MARKER_TYPE_CHAPTER,
+            Segmentation: mk.MARKER_TYPE_SEGMENTATION,
+            WebLink: mk.MARKER_TYPE_WEBLINK
+        };
+        return map[type] || type;
     }
 
-    function setColor(ctx, records, colorIndex, undoLabel) {
-        return runTransaction(ctx, undoLabel, function (add) {
-            records.forEach(function (r) { add(r.marker.createSetColorByIndexAction(colorIndex)); });
+    // Aplica um plano do core/plans.js inteiro numa única transação (um Ctrl+Z).
+    // Cada item: { record, color?, name?, comments?, type?, toFrame?, remove? }
+    function applyPlan(ctx, plan, undoLabel) {
+        if (!ctx.markersObj) throw new Error("Atualize a lista antes de alterar marcadores.");
+        if (!plan.length) return false;
+        var times = plan.map(function (p) { return typeof p.toFrame === "number" ? tickAtFrame(ctx, p.toFrame) : null; });
+        runTransaction(ctx, undoLabel, function (add) {
+            plan.forEach(function (p, i) {
+                var m = p.record.marker;
+                if (p.remove) { add(ctx.markersObj.createRemoveMarkerAction(m)); return; }
+                if (times[i]) add(ctx.markersObj.createMoveMarkerAction(m, times[i]));
+                if (typeof p.color === "number") add(m.createSetColorByIndexAction(p.color));
+                if (typeof p.name === "string") add(m.createSetNameAction(p.name));
+                if (typeof p.comments === "string") add(m.createSetCommentsAction(p.comments));
+                if (typeof p.type === "string") add(m.createSetTypeAction(typeValue(p.type)));
+            });
         });
+        return true;
+    }
+
+    // ---------- playhead e In/Out ----------
+    async function getPlayheadFrame(ctx) {
+        var t = await ctx.sequence.getPlayerPosition();
+        return T.frameFromTicks(t.ticksNumber, ctx.ticksPerFrame).frame;
+    }
+
+    async function setPlayheadFrame(ctx, frame) {
+        var ok = await ctx.sequence.setPlayerPosition(tickAtFrame(ctx, frame));
+        if (ok === false) throw new Error("O Premiere não moveu o playhead.");
+        return true;
+    }
+
+    async function getInOut(ctx) {
+        var tin = await ctx.sequence.getInPoint();
+        var tout = await ctx.sequence.getOutPoint();
+        if (!tin || !tout) throw new Error("O Premiere não informou o In/Out da sequência.");
+        return {
+            inFrame: T.frameFromTicks(tin.ticksNumber, ctx.ticksPerFrame).frame,
+            outFrame: T.frameFromTicks(tout.ticksNumber, ctx.ticksPerFrame).frame
+        };
+    }
+
+    // ---------- arquivo e área de transferência (API UXP) ----------
+    // Abre a janela "Salvar como". Devolve o nome do arquivo salvo, ou "" se o usuário cancelar.
+    async function saveTextFile(suggestedName, ext, text) {
+        var fs = require("uxp").storage.localFileSystem;
+        var file = await fs.getFileForSaving(suggestedName, { types: [ext] });
+        if (!file) return "";
+        await file.write(text);
+        return file.name || suggestedName;
+    }
+
+    async function copyText(text) {
+        var cb = navigator.clipboard;
+        if (!cb) throw new Error("A área de transferência não está disponível.");
+        if (typeof cb.writeText === "function") await cb.writeText(text);
+        else await cb.setContent({ "text/plain": text });
+        return true;
     }
 
     // plan: saída de HMMarkers.planTestMarkers. Marcadores pontuais do tipo Comentário.
@@ -212,9 +279,13 @@ var HMPremiere = (function () {
         available: available,
         getContext: getContext,
         readMarkers: readMarkers,
-        moveMarkers: moveMarkers,
-        setColor: setColor,
+        applyPlan: applyPlan,
         addMarkers: addMarkers,
+        getPlayheadFrame: getPlayheadFrame,
+        setPlayheadFrame: setPlayheadFrame,
+        getInOut: getInOut,
+        saveTextFile: saveTextFile,
+        copyText: copyText,
         listen: listen
     };
 })();
