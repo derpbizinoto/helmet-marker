@@ -70,10 +70,7 @@ var HMI18n = (function () {
         "Ponto e vírgula": "Semicolon",
         "Vírgula": "Comma",
         "Salvar .csv": "Save .csv",
-        "Ferramentas de teste": "Test tools",
         "Criar": "Create",
-        "marcadores, a cada": "markers, every",
-        "Diagnóstico": "Diagnostics",
 
         // --- painel: lista e leitura ------------------------------------------------------
         "Erro: {0}": "Error: {0}",
@@ -115,9 +112,6 @@ var HMI18n = (function () {
         "Helmet Marker: excluir marcadores": "Helmet Marker: delete markers",
         "Marcadores excluídos: {0}. Um Ctrl+Z desfaz.": "Markers deleted: {0}. One Ctrl+Z undoes it.",
         "Excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.": "Delete {0} marker(s)? You can undo it with Ctrl+Z.",
-        "Teste": "Test",
-        "Helmet Marker: criar marcadores de teste": "Helmet Marker: create test markers",
-        "{0} marcadores criados em {1} ms. Um Ctrl+Z desfaz todos.": "{0} markers created in {1} ms. One Ctrl+Z undoes them all.",
         "Fora do Premiere: a API premierepro não está disponível.": "Outside Premiere: the premierepro API is not available.",
 
         // --- painel: exportar ----------------------------------------------------------
@@ -139,7 +133,7 @@ var HMI18n = (function () {
         "Capítulos com menos de 10 segundos (o YouTube exige 10 s ou mais): {0}.": "Chapters shorter than 10 seconds (YouTube requires 10 s or more): {0}.",
         "Marcadores sem nome nem comentário: {0}.": "Markers with no name or comment: {0}.",
 
-        // --- diagnóstico ----------------------------------------------------------------
+        // --- log ----------------------------------------------------------------------------
         "Eventos registrados: {0}": "Registered events: {0}",
         "nenhum": "none",
         "nenhuma": "none",
@@ -222,47 +216,12 @@ var HMI18n = (function () {
         "O marcador não está mais na lista. Nada foi alterado.": "The marker is no longer in the list. Nothing was changed.",
         "Não consegui guardar no painel.": "Couldn't save it in the panel.",
 
-        // --- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------------
-        "Tempo e limpeza": "Timing and cleanup",
-        "segundos": "seconds",
-        "Tornar pontuais": "Make point markers",
-        "Distribuir": "Distribute",
-        "Mesmo espaço entre o primeiro e o último.": "Even spacing between the first and the last.",
-        "Encaixar no corte": "Snap to cut",
+        // --- cortes ----------------------------------------------------------------
         "Clipes de vídeo e áudio": "Video and audio clips",
         "Só clipes de vídeo": "Video clips only",
         "Só clipes de áudio": "Audio clips only",
-        "até": "up to",
-        "Encaixar": "Snap to cut",
-        "Corte = começo ou fim de clipe.": "Cut = start or end of a clip.",
-        "Duplicados e próximos": "Duplicates and nearby markers",
-        "Distância": "Distance",
-        "Remover": "Remove",
-        "Mesclar": "Merge",
-        "Remover deixa o primeiro; Mesclar junta os comentários nele.": "Remove keeps the first; Merge joins the comments into it.",
-        "A duração precisa ser um número inteiro de 0 ou mais.": "The duration must be a whole number, 0 or more.",
-        "Helmet Marker: mudar duração": "Helmet Marker: change duration",
-        "Duração alterada em {0} marcador(es). Um Ctrl+Z desfaz.": "Duration changed on {0} marker(s). One Ctrl+Z undoes it.",
-        "Helmet Marker: tornar pontuais": "Helmet Marker: make point markers",
-        "Marcadores que viraram pontuais: {0}. Um Ctrl+Z desfaz.": "Markers made point markers: {0}. One Ctrl+Z undoes it.",
-        "Helmet Marker: distribuir marcadores": "Helmet Marker: distribute markers",
-        "Marcadores distribuídos: {0} movidos. Um Ctrl+Z desfaz.": "Markers distributed: {0} moved. One Ctrl+Z undoes it.",
-        "Helmet Marker: encaixar no corte": "Helmet Marker: snap to cut",
-        "Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz.": "Markers snapped to a cut: {0}. One Ctrl+Z undoes it.",
-        "Nenhum duplicado ou marcador próximo nessa distância.": "No duplicates or nearby markers at this distance.",
-        "Grupos encontrados: vai excluir {0} marcador(es).": "Groups found: will delete {0} marker(s).",
-        "Helmet Marker: mesclar marcadores": "Helmet Marker: merge markers",
-        "Helmet Marker: remover duplicados": "Helmet Marker: remove duplicates",
-        "Mesclagem feita: {0} alteração(ões). Um Ctrl+Z desfaz.": "Merge done: {0} change(s). One Ctrl+Z undoes it.",
-        "Duplicados removidos: {0}. Um Ctrl+Z desfaz.": "Duplicates removed: {0}. One Ctrl+Z undoes it.",
-        "Mesclar e excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.": "Merge and delete {0} marker(s)? You can undo with Ctrl+Z.",
-        "Excluir {0} marcador(es) duplicado(s)? Dá para desfazer com Ctrl+Z.": "Delete {0} duplicate marker(s)? You can undo with Ctrl+Z.",
-        "Selecione pelo menos 3 marcadores.": "Select at least 3 markers.",
-        "A distância máxima precisa ser um número inteiro de frames (1 ou mais).": "The maximum distance must be a whole number of frames (1 or more).",
         "Não há clipes nas trilhas escolhidas.": "There are no clips on the chosen tracks.",
-        "A distância precisa ser um número inteiro de 0 ou mais frames.": "The distance must be a whole number of frames, 0 or more.",
 
-        "Painel": "Panel",
         "Rolagem": "Scrolling",
         "Normal": "Normal",
         "Roda do mouse no painel: {0}": "Mouse wheel in the panel: {0}",
@@ -310,9 +269,9 @@ var HMI18n = (function () {
         "O deslocamento precisa ser um número inteiro de frames.": "The offset must be a whole number of frames.",
         "Mover {0} frames deixaria {1} marcador(es) antes do início da sequência. Nada foi alterado.":
             "Moving {0} frames would put {1} marker(s) before the start of the sequence. Nothing was changed.",
-        "A quantidade precisa ser um número inteiro entre 1 e 5000.": "The count must be a whole number between 1 and 5000.",
-        "O espaçamento precisa ser um número inteiro de frames (1 ou mais).": "The spacing must be a whole number of frames (1 or more).",
         // fase 3 (parte B)
+        "Legenda": "Legend",
+        "Ferramentas": "Tools",
         "Filtros": "Filters",
         "Seleção": "Selection",
         "Seleções salvas": "Saved selections",
@@ -323,7 +282,6 @@ var HMI18n = (function () {
         "O Premiere não informou a posição do playhead.": "Premiere did not report the playhead position.",
         "Helmet Marker: levar ao playhead": "Helmet Marker: move to playhead",
         "Marcadores levados ao playhead: {0}. Um Ctrl+Z desfaz.": "Markers moved to the playhead: {0}. One Ctrl+Z undoes it.",
-        "A duração precisa ser um número de 0 ou mais.": "The duration must be a number of 0 or more.",
         "Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):": "Latest scroll notices (area, ms, position, step, what the panel did):",
         "ponta": "edge (not multiplied)",
         "multiplicou": "multiplied",
@@ -336,13 +294,6 @@ var HMI18n = (function () {
         "Trazer do clipe": "Bring from clip",
         "Enviar para o clipe": "Send to clip",
         "Selecione clipes na timeline antes. Clipes com velocidade alterada ficam de fora.": "Select clips in the timeline first. Clips with changed speed are skipped.",
-        "Checklist e legenda": "Checklist and legend",
-        "Marcar feito": "Mark done",
-        "Desmarcar": "Unmark",
-        "Pendentes": "Pending",
-        "Feitos": "Done",
-        "Feito põe ✓ no começo do nome.": "Done adds ✓ to the start of the name.",
-        "Legenda das cores": "Color legend",
         "O que cada cor significa (ex.: Vermelho = corrigir).": "What each color means (e.g. Red = fix).",
         "Nenhuma outra sequência no projeto": "No other sequence in the project",
         "Clique em Atualizar": "Click Refresh",
@@ -368,13 +319,6 @@ var HMI18n = (function () {
         "Marcadores enviados para {0} clipe(s): {1}. As cores entraram numa segunda etapa: são dois Ctrl+Z para desfazer tudo.": "Markers sent to {0} clip(s): {1}. The colors went in as a second step: it takes two Ctrl+Z to undo everything.",
         "Marcadores enviados para {0} clipe(s): {1}. Um Ctrl+Z desfaz.": "Markers sent to {0} clip(s): {1}. One Ctrl+Z undoes it.",
         "Significado": "Meaning",
-        "Feitos: {0} de {1}": "Done: {0} of {1}",
-        "Helmet Marker: marcar como feito": "Helmet Marker: mark as done",
-        "Helmet Marker: desmarcar feito": "Helmet Marker: unmark done",
-        "Marcados como feitos: {0}. Um Ctrl+Z desfaz.": "Marked as done: {0}. One Ctrl+Z undoes it.",
-        "Desmarcados: {0}. Um Ctrl+Z desfaz.": "Unmarked: {0}. One Ctrl+Z undoes it.",
-        "Feitos selecionados: {0}.": "Done markers selected: {0}.",
-        "Pendentes selecionados: {0}.": "Pending markers selected: {0}.",
         // fase 3 (parte A)
         "Maior travada do painel (últimos 30 s): {0} ms": "Longest panel freeze (last 30 s): {0} ms",
         "Importar e gerar": "Import and generate",
@@ -429,7 +373,7 @@ var HMI18n = (function () {
     };
 
     // Iguais nas duas línguas (os testes não cobram tradução para estes).
-    var SAME_IN_BOTH = ["Language / Idioma", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "2x", "3x", "4x", "6x", "EDL"];
+    var SAME_IN_BOTH = ["Language / Idioma", "Log", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "2x", "3x", "4x", "6x", "EDL"];
 
     var hasOwn = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
 

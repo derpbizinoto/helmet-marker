@@ -317,7 +317,7 @@
 
         renderSelectionInfo();
         if (fieldText("impText")) scheduleImportPreview();
-        renderChecklist();
+        renderLegendRows();
         // trocou de sequência: a lista de destinos (que exclui a ativa) precisa ser relida
         if (state.sequencesFor && hasSeq() && state.sequencesFor !== state.ctx.sequenceId) {
             state.sequences = null;
@@ -478,8 +478,6 @@
         else if (!tpl) setText($("pvTpl"), tr("Escolha um modelo."));
         else setText($("pvTpl"), sel.length ? previewText(function () { return PL.planTemplate(sel, tpl).length; }, change) : none);
 
-        if (hasSeq()) partBPreviews(sel, none, change);
-
         setText($("pvToPlayhead"), !sel.length ? none : (function () {
             try { PL.checkConsecutive(sel, state.records); return tr("Vai levar {0} marcador(es) ao playhead.", sel.length); }
             catch (e) { return "⚠ " + errText(e); }
@@ -591,10 +589,8 @@
         setEnabled("btnCutMarkers", ready);
         setEnabled("btnSeqRefresh", ready);
         setEnabled("btnCopy", canExport && selValue("copyTarget") && selValue("copyTarget") !== "none");
-        ["btnClipToSeq", "btnSeqToClip", "btnSelPending", "btnSelDone"].forEach(function (id) { setEnabled(id, ready); });
-        ["btnDone", "btnUndone"].forEach(function (id) { setEnabled(id, ready && n); });
+        ["btnClipToSeq", "btnSeqToClip"].forEach(function (id) { setEnabled(id, ready); });
         setClass($("chipImpSkip"), "chip" + (state.impSkip ? " on" : ""));
-        setEnabled("btnTest", ready);
         ["btnReplace", "btnNumber"].forEach(function (id) { setEnabled(id, ready && n); });
         var tpl = currentTemplate();
         setEnabled("btnTplApply", ready && n && tpl);
@@ -605,8 +601,6 @@
         setEnabled("btnSavedDelete", !!saved);
         setEnabled("btnSavedSave", ready && n);
         setClass($("chipMatchCase"), "chip" + (state.matchCase ? " on" : ""));
-        ["btnDuration", "btnPoint", "btnSnap", "btnDedupe", "btnMerge"].forEach(function (id) { setEnabled(id, ready && n); });
-        setEnabled("btnDistribute", ready && n >= 3);
         setClass($("chipInOut"), "chip" + (state.inOutOn ? " on" : "") + (hasSeq() ? "" : " is-disabled"));
         setClass($("chipAfterPlayhead"), "chip" + (state.afterPlayheadOn ? " on" : ""));
     }
@@ -701,110 +695,13 @@
                 tr("Helmet Marker: excluir marcadores"), N("Marcadores excluídos: {0}. Um Ctrl+Z desfaz."));
         };
         $("confirmText").textContent = tr("Excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.", n);
-        show($("confirmClean"), false);
         show($("confirmBar"), true);
     }
     function closeConfirm(run) {
         var fn = state.confirm;
         state.confirm = null;
         show($("confirmBar"), false);
-        show($("confirmClean"), false);
         if (run && fn) fn();
-    }
-
-    // ---------- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------
-    function durationFrames() {
-        var v = numField("durValue");
-        if (selValue("durUnit") !== "frames") {
-            if (!isFinite(v) || v < 0) throw new Error("A duração precisa ser um número de 0 ou mais.");
-            return PL.secondsToFrames(v, state.ctx.info);
-        }
-        if (!isFinite(v) || Math.round(v) !== v || v < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
-        return v;
-    }
-
-    function onDuration() {
-        runEdit(function () { return PL.planDuration(needSelection(), durationFrames()); },
-            tr("Helmet Marker: mudar duração"), N("Duração alterada em {0} marcador(es). Um Ctrl+Z desfaz."));
-    }
-    function onPoint() {
-        runEdit(function () { return PL.planDuration(needSelection(), 0); },
-            tr("Helmet Marker: tornar pontuais"), N("Marcadores que viraram pontuais: {0}. Um Ctrl+Z desfaz."));
-    }
-
-    function onDistribute() {
-        runEdit(function () { return PL.planDistribute(needSelection()); },
-            tr("Helmet Marker: distribuir marcadores"), N("Marcadores distribuídos: {0} movidos. Um Ctrl+Z desfaz."));
-    }
-
-    function onSnap() {
-        runEdit(async function () {
-            var sel = needSelection();
-            var cuts = await P.getCutFrames(state.ctx, selValue("snapTracks"));
-            return PL.planSnap(sel, cuts, numField("snapMax"));
-        }, tr("Helmet Marker: encaixar no corte"), N("Marcadores encaixados no corte: {0}. Um Ctrl+Z desfaz."));
-    }
-
-    function cleanCounts(plan) {
-        var removed = plan.filter(function (p) { return p.remove; }).length;
-        return { removed: removed, kept: plan.length - removed };
-    }
-
-    // Remover e mesclar excluem marcadores, então pedem confirmação (como o Excluir).
-    function onClean(kind) {
-        try {
-            var plan = kind === "merge" ? PL.planMerge(needSelection(), numField("cleanTol"))
-                : PL.planDedupe(needSelection(), numField("cleanTol"));
-            var n = cleanCounts(plan).removed;
-            if (!n) { setStatus(tr("Nenhum duplicado ou marcador próximo nessa distância."), "warn"); return; }
-            state.confirm = function () {
-                runEdit(function () {
-                    var tol = numField("cleanTol");
-                    return kind === "merge" ? PL.planMerge(needSelection(), tol) : PL.planDedupe(needSelection(), tol);
-                }, kind === "merge" ? tr("Helmet Marker: mesclar marcadores") : tr("Helmet Marker: remover duplicados"),
-                kind === "merge" ? N("Mesclagem feita: {0} alteração(ões). Um Ctrl+Z desfaz.") : N("Duplicados removidos: {0}. Um Ctrl+Z desfaz."));
-            };
-            $("confirmCleanText").textContent = kind === "merge"
-                ? tr("Mesclar e excluir {0} marcador(es)? Dá para desfazer com Ctrl+Z.", n)
-                : tr("Excluir {0} marcador(es) duplicado(s)? Dá para desfazer com Ctrl+Z.", n);
-            show($("confirmBar"), false);
-            show($("confirmClean"), true);
-        } catch (e) {
-            showError(e);
-        }
-    }
-
-    function partBPreviews(sel, none, change) {
-        setText($("pvDuration"), sel.length ? previewText(function () { return PL.planDuration(sel, durationFrames()).length; }, change) : none);
-        setText($("pvDistribute"), sel.length ? previewText(function () { return PL.planDistribute(sel).length; }, change) : none);
-        setText($("pvSnap"), "");
-        setText($("pvClean"), !sel.length ? none : (function () {
-            try {
-                var tol = numField("cleanTol");
-                var d = cleanCounts(PL.planDedupe(sel, tol)).removed;
-                if (!d) return tr("Nenhum duplicado ou marcador próximo nessa distância.");
-                return tr("Grupos encontrados: vai excluir {0} marcador(es).", d);
-            } catch (e) { return errText(e); }
-        })());
-    }
-
-    function onTest() {
-        if (state.busy) return;
-        state.busy = true;
-        updateButtons();
-        var message;
-        try {
-            var plan = M.planTestMarkers(numField("testCount"), numField("testStep"), 0, null, tr("Teste") + " ");
-            var t0 = Date.now();
-            P.addMarkers(state.ctx, plan, tr("Helmet Marker: criar marcadores de teste"));
-            message = tr("{0} marcadores criados em {1} ms. Um Ctrl+Z desfaz todos.", plan.length, Date.now() - t0);
-        } catch (e) {
-            showError(e);
-        } finally {
-            state.busy = false;
-            updateButtons();
-        }
-        if (message) read(N("depois de uma operação do painel"), true, message).catch(showError);
     }
 
     // ---------- fase 2: localizar, numerar, modelos ----------
@@ -1505,7 +1402,7 @@
         setStatus(message, kind);
     }
 
-    // ---------- fase 3 (parte B): checklist e legenda ----------
+    // ---------- legenda das cores ----------
     var LEGEND_KEY = "helmetmarker.legend";
 
     function loadLegend() {
@@ -1517,7 +1414,7 @@
 
     var legendSig = "";
     function renderLegendRows() {
-        if (isCollapsed("checklist")) return;
+        if (isCollapsed("legend")) return;
         var colors = state.ctx && state.ctx.colors ? state.ctx.colors : [];
         var sig = colors.map(function (c) { return c.index; }).join(",") + "|" + HMI18n.lang();
         if (sig === legendSig) return;
@@ -1544,51 +1441,12 @@
                 saveLegend();
                 state.colorsSig = "";       // refaz os títulos das cores do filtro
                 buildColorControls();
-                renderChecklist();
             });
             row.appendChild(dot);
             row.appendChild(label);
             row.appendChild(input);
             box.appendChild(row);
         });
-    }
-
-    function renderChecklist() {
-        if (isCollapsed("checklist")) return;
-        renderLegendRows();
-        var box = $("checkProgress");
-        var lines = [];
-        if (hasSeq() && state.records.length) {
-            var p = PL.progress(state.records);
-            lines.push(tr("Feitos: {0} de {1}", p.done, p.total));
-            // por cor numa linha só (menos texto na tela)
-            if (p.byColor.length) lines.push(p.byColor.map(function (b) {
-                var c = M.colorFor(state.ctx.colors, b.index);
-                var meaning = state.legend[b.index] ? " (" + state.legend[b.index] + ")" : "";
-                return tr(c.label) + meaning + " " + b.done + "/" + b.total;
-            }).join("   ·   "));
-        }
-        while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
-        lines.forEach(function (l, i) {
-            var d = box.childNodes[i];
-            if (!d) { d = document.createElement("div"); box.appendChild(d); }
-            setText(d, l);
-        });
-    }
-
-    function onDone(done) {
-        runEdit(function () { return PL.planDone(needSelection(), done); },
-            done ? tr("Helmet Marker: marcar como feito") : tr("Helmet Marker: desmarcar feito"),
-            done ? N("Marcados como feitos: {0}. Um Ctrl+Z desfaz.") : N("Desmarcados: {0}. Um Ctrl+Z desfaz."));
-    }
-
-    function selectByDone(done) {
-        var sel = {};
-        state.visible.forEach(function (r) { if (PL.isDone(r) === done) sel[r.key] = true; });
-        state.selected = sel;
-        renderSelectionInfo();
-        var n = Object.keys(sel).length;
-        setStatus(done ? tr("Feitos selecionados: {0}.", n) : tr("Pendentes selecionados: {0}.", n), n ? "ok" : "warn");
     }
 
     function onCutMarkers() {
@@ -1643,8 +1501,8 @@
         card.querySelector(".card-body").style.display = closed ? "none" : "block";
     }
 
-    // Lista sem escolha (em branco): no Premiere 26.5.2 isso aconteceu com "segundos/frames" e
-    // "Clipes de vídeo e áudio". Se o valor não for uma das opções, escolhe a primeira.
+    // Lista sem escolha (em branco): no Premiere 26.5.2 isso aconteceu com algumas listas do
+    // painel. Se o valor não for uma das opções, escolhe a primeira.
     function fixSelects(root) {
         var sels = (root || document).querySelectorAll("select");
         for (var i = 0; i < sels.length; i++) if (sels[i].id) selValue(sels[i].id);
@@ -1657,7 +1515,7 @@
         if (!isCollapsed(key)) fixSelects(document.querySelector('section[data-card="' + key + '"]'));
         if (key === "tools") renderDiagnostics();
         if (key === "import") renderImportPreview();
-        if (key === "checklist") { legendSig = ""; renderChecklist(); }
+        if (key === "legend") { legendSig = ""; renderLegendRows(); }
         if (key === "seqclip" && !isCollapsed("seqclip") && hasSeq() && state.sequencesFor !== state.ctx.sequenceId) loadSequences();
     }
 
@@ -1685,7 +1543,7 @@
     // ---------- rolagem com a roda do mouse ----------
     // A rolagem nativa do painel no Premiere é lenta. Se o UXP entregar o evento "wheel" (a doc
     // não diz; no 26.5.2 não entrega), o painel rola sozinho N vezes mais. Senão vale o plano B
-    // abaixo. O Diagnóstico mostra se o evento chegou.
+    // abaixo. O log mostra se o evento chegou.
     var SCROLL_KEY = "helmetmarker.scrollSpeed";
     var SCROLLERS = ["list", "ytPreview", "content"];   // de dentro para fora
 
@@ -1724,12 +1582,12 @@
     // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
     var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, touch: {}, x: -1, y: -1 };
     // Balanço na ponta: ao chegar no começo ou no fim, o Premiere faz sozinho um "elástico" de
-    // poucos pixels (−10, −19, +10, +29…), até ~1 s depois (registro do Diagnóstico, 26.5.2).
+    // poucos pixels (−10, −19, +10, +29…), até ~1 s depois (log, 26.5.2).
     // Na velocidade Normal ele quase não aparece; multiplicado virava a engasgada. Então, logo
     // depois de a área encostar numa ponta, movimentos pequenos não são multiplicados.
     var EDGE_QUIET_MS = 1500;
     var EDGE_SMALL_PX = 60;
-    var scrollLog = [];       // últimos avisos de rolagem (Diagnóstico), para achar engasgadas
+    var scrollLog = [];       // últimos avisos de rolagem (log), para achar engasgadas
     function logScroll(id, cur, d, what) {
         scrollLog.push({ t: Date.now(), id: id, cur: Math.round(cur), d: Math.round(d), what: what });
         if (scrollLog.length > 8) scrollLog.shift();
@@ -1750,7 +1608,7 @@
 
     // Cada aviso de rolagem pequeno é multiplicado, menos: os causados pelo próprio painel, os
     // de redesenho da lista, os da barra de rolagem, os saltos grandes e o balanço logo depois
-    // de encostar numa ponta (ver EDGE_QUIET_MS). Cada decisão vai para o registro do Diagnóstico.
+    // de encostar numa ponta (ver EDGE_QUIET_MS). Cada decisão vai para o log.
     function onScrollAmplify(e) {
         var el = e.currentTarget || e.target;
         if (!el || !el.id) return;
@@ -1909,12 +1767,6 @@
         on("btnCopy", "click", onCopy);
         on("btnClipToSeq", "click", onClipToSeq);
         on("btnSeqToClip", "click", onSeqToClip);
-        on("btnDone", "click", function () { onDone(true); });
-        on("btnUndone", "click", function () { onDone(false); });
-        on("btnSelPending", "click", function () { selectByDone(false); });
-        on("btnSelDone", "click", function () { selectByDone(true); });
-
-        on("btnTest", "click", onTest);
 
         // fase 2: localizar e numerar
         on("btnReplace", "click", onReplace);
@@ -1938,19 +1790,6 @@
         on("btnSavedLoad", "click", onSavedLoad);
         on("btnSavedDelete", "click", onSavedDelete);
         on("btnSavedSave", "click", onSavedSave);
-
-        // fase 2 (parte B)
-        show($("confirmClean"), false);
-        on("btnDuration", "click", onDuration);
-        on("btnPoint", "click", onPoint);
-        on("btnDistribute", "click", onDistribute);
-        on("btnSnap", "click", onSnap);
-        on("btnDedupe", "click", function () { onClean("dedupe"); });
-        on("btnMerge", "click", function () { onClean("merge"); });
-        on("btnCleanYes", "click", function () { closeConfirm(true); });
-        on("btnCleanNo", "click", function () { closeConfirm(false); });
-        ["durValue", "snapMax", "cleanTol"].forEach(function (id) { on(id, "input", schedulePreviews); });
-        ["durUnit", "snapTracks"].forEach(function (id) { on(id, "change", schedulePreviews); });
 
         window.addEventListener("error", function (e) { showError(e.error || e.message); });
         window.addEventListener("unhandledrejection", function (e) { showError(e.reason); });

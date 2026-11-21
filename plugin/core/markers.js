@@ -58,31 +58,6 @@
         return { index: index, name: "?", label: "Cor " + index, hex: "#B9A8CB" };
     }
 
-    // ---------- marcadores de teste ----------
-    // Plano para criar N marcadores espaçados de "step" frames, começando em startFrame,
-    // com as cores em rodízio. Só dados; quem cria é a camada premiere/.
-    function planTestMarkers(count, stepFrames, startFrame, colorTable, prefix) {
-        prefix = prefix == null ? "Teste " : String(prefix);
-        count = Number(count);
-        stepFrames = Number(stepFrames);
-        startFrame = Number(startFrame) || 0;
-        if (!(count >= 1 && count <= 5000 && Math.round(count) === count)) {
-            throw new Error("A quantidade precisa ser um número inteiro entre 1 e 5000.");
-        }
-        if (!(stepFrames >= 1 && Math.round(stepFrames) === stepFrames)) {
-            throw new Error("O espaçamento precisa ser um número inteiro de frames (1 ou mais).");
-        }
-        var digits = String(count).length < 3 ? 3 : String(count).length;
-        var out = [];
-        for (var i = 0; i < count; i++) {
-            var n = String(i + 1);
-            while (n.length < digits) n = "0" + n;
-            var color = colorTable && colorTable.length ? colorTable[i % colorTable.length].index : null;
-            out.push({ name: prefix + n, frame: startFrame + i * stepFrames, colorIndex: color });
-        }
-        return out;
-    }
-
     // "Impressão digital" da lista: muda se qualquer marcador for criado, apagado, movido ou
     // editado. A verificação periódica relê e só redesenha o painel se ela mudar.
     function signature(records) {
@@ -96,7 +71,6 @@
         assignKeys: assignKeys,
         buildColorTable: buildColorTable,
         colorFor: colorFor,
-        COLOR_INFO: COLOR_INFO,
-        planTestMarkers: planTestMarkers
+        COLOR_INFO: COLOR_INFO
     };
 });

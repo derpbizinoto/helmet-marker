@@ -307,12 +307,11 @@ var HMPremiere = (function () {
     }
 
     // Aplica um plano do core/plans.js inteiro numa única transação (um Ctrl+Z).
-    // Cada item: { record, color?, name?, comments?, type?, toFrame?, durationFrames?, remove? }
+    // Cada item: { record, color?, name?, comments?, type?, toFrame?, remove? }
     function applyPlan(ctx, plan, undoLabel) {
         if (!ctx.markersObj) throw new Error("Atualize a lista antes de alterar marcadores.");
         if (!plan.length) return false;
         var times = plan.map(function (p) { return typeof p.toFrame === "number" ? tickAtFrame(ctx, p.toFrame) : null; });
-        var durs = plan.map(function (p) { return typeof p.durationFrames === "number" ? tickAtFrame(ctx, p.durationFrames) : null; });
         runTransaction(ctx, undoLabel, function (add) {
             plan.forEach(function (p, i) {
                 var m = p.record.marker;
@@ -322,13 +321,6 @@ var HMPremiere = (function () {
                 if (typeof p.name === "string") add(m.createSetNameAction(p.name));
                 if (typeof p.comments === "string") add(m.createSetCommentsAction(p.comments));
                 if (typeof p.type === "string") add(m.createSetTypeAction(typeValue(p.type)));
-                if (durs[i]) {
-                    add(m.createSetDurationAction(durs[i]));
-                    // A timeline não redesenha só com a duração (testado no 26.5.2): "mover" o
-                    // marcador para o próprio início, na mesma transação, para forçar o redesenho.
-                    // Usa os ticks exatos (TickTime.createWithTicks, 25.6), então nada sai do lugar.
-                    if (!times[i]) add(ctx.markersObj.createMoveMarkerAction(m, ppro().TickTime.createWithTicks(String(p.record.startTicks))));
-                }
             });
         });
         return true;
@@ -426,7 +418,7 @@ var HMPremiere = (function () {
         return true;
     }
 
-    // plan: [{ frame, name, type?, comments?, durationFrames? }] (teste, importação, cortes).
+    // plan: [{ frame, name, type?, comments?, durationFrames? }] (importação, cortes, cópia).
     // Sem tipo = Comentário; sem duração = pontual.
     // (Cor não é definida aqui: createAddMarkerAction não devolve o marcador criado, e mudar
     // a cor exige uma segunda transação — dois Ctrl+Z. O painel faz isso depois de reler.)
@@ -450,7 +442,7 @@ var HMPremiere = (function () {
     }
 
     // ---------- eventos ----------
-    // Registra o que existir e devolve a lista do que funcionou (mostrada no diagnóstico).
+    // Registra o que existir e devolve a lista do que funcionou (mostrada no log).
     function listen(onChange) {
         var a = ppro();
         var C = a.Constants || {};

@@ -202,104 +202,6 @@
         return plan;
     }
 
-    // ---------- fase 2 (parte B): duração ----------
-    // Mesma duração para todos (0 = pontual).
-    function planDuration(records, frames) {
-        frames = Number(frames);
-        if (!isInt(frames) || frames < 0) throw new Error("A duração precisa ser um número inteiro de 0 ou mais.");
-        return records.filter(function (r) { return r.durationFrames !== frames; })
-            .map(function (r) { return { record: r, durationFrames: frames }; });
-    }
-
-    function byFrame(records) {
-        return records.map(function (r, i) { return { r: r, i: i }; })
-            .sort(function (a, b) { return (a.r.startFrame - b.r.startFrame) || (a.i - b.i); })
-            .map(function (o) { return o.r; });
-    }
-
-    // ---------- fase 2 (parte B): distribuir ----------
-    // O primeiro e o último ficam no lugar; os do meio ficam igualmente espaçados (em frames
-    // inteiros, arredondados).
-    function planDistribute(records) {
-        if (records.length < 3) throw new Error("Selecione pelo menos 3 marcadores.");
-        var list = byFrame(records);
-        var first = list[0].startFrame, last = list[list.length - 1].startFrame;
-        var n = list.length - 1;
-        var plan = [];
-        list.forEach(function (r, i) {
-            var to = Math.round(first + i * (last - first) / n);
-            if (to !== r.startFrame) plan.push({ record: r, toFrame: to });
-        });
-        return plan;
-    }
-
-    // ---------- fase 2 (parte B): encaixar no corte ----------
-    // cuts: frames de início/fim dos clipes. Só encaixa se o corte estiver a até maxDistance frames.
-    // Empate: o corte anterior.
-    function planSnap(records, cuts, maxDistance) {
-        maxDistance = Number(maxDistance);
-        if (!isInt(maxDistance) || maxDistance < 1) throw new Error("A distância máxima precisa ser um número inteiro de frames (1 ou mais).");
-        var list = (cuts || []).filter(function (c) { return isInt(c) && c >= 0; }).sort(function (a, b) { return a - b; });
-        if (!list.length) throw new Error("Não há clipes nas trilhas escolhidas.");
-        var plan = [];
-        records.forEach(function (r) {
-            var best = null;
-            list.forEach(function (c) {
-                var d = Math.abs(c - r.startFrame);
-                if (best === null || d < Math.abs(best - r.startFrame)) best = c;
-            });
-            if (best !== r.startFrame && Math.abs(best - r.startFrame) <= maxDistance) plan.push({ record: r, toFrame: best });
-        });
-        return plan;
-    }
-
-    // ---------- fase 2 (parte B): duplicados e mesclar ----------
-    // Grupos: marcadores a até "tolerance" frames do PRIMEIRO do grupo (0 = mesmo frame).
-    function clusters(records, tolerance) {
-        tolerance = Number(tolerance);
-        if (!isInt(tolerance) || tolerance < 0) throw new Error("A distância precisa ser um número inteiro de 0 ou mais frames.");
-        var groups = [];
-        byFrame(records).forEach(function (r) {
-            var g = groups[groups.length - 1];
-            if (g && r.startFrame - g[0].startFrame <= tolerance) g.push(r);
-            else groups.push([r]);
-        });
-        return groups.filter(function (g) { return g.length > 1; });
-    }
-
-    // Fica o primeiro de cada grupo; os outros são excluídos.
-    function planDedupe(records, tolerance) {
-        var plan = [];
-        clusters(records, tolerance).forEach(function (g) {
-            g.slice(1).forEach(function (r) { plan.push({ record: r, remove: true }); });
-        });
-        return plan;
-    }
-
-    // Fica o primeiro de cada grupo, com os comentários de todos juntos (" | ", sem repetir) e,
-    // se ele não tiver nome, o primeiro nome que existir no grupo. Os outros são excluídos.
-    function planMerge(records, tolerance) {
-        var plan = [];
-        clusters(records, tolerance).forEach(function (g) {
-            var keep = g[0];
-            var texts = [];
-            g.forEach(function (r) {
-                var c = String(r.comments || "").trim();
-                if (c && texts.indexOf(c) < 0) texts.push(c);
-            });
-            var item = { record: keep };
-            var joined = texts.join(" | ");
-            if (joined !== keep.comments) item.comments = joined;
-            if (!keep.name) {
-                var named = g.filter(function (r) { return r.name; })[0];
-                if (named) item.name = named.name;
-            }
-            if (item.comments !== undefined || item.name !== undefined) plan.push(item);
-            g.slice(1).forEach(function (r) { plan.push({ record: r, remove: true }); });
-        });
-        return plan;
-    }
-
     // ---------- fase 3: marcador em cada corte ----------
     // cuts: frames dos cortes (início e fim dos clipes; o começo do primeiro clipe conta).
     // Pula o ÚLTIMO (fim da sequência) e os frames que já têm marcador. Nome: prefixo +
@@ -414,33 +316,6 @@
         return { items: kept, skipped: items.length - kept.length };
     }
 
-    // ---------- checklist ----------
-    // "Feito" = o nome começa com ✓ (aparece igual na timeline e em qualquer exportação).
-    var DONE_MARK = "✓ ";
-    function isDone(r) { return /^\s*✓/.test(String(r.name || "")); }
-    function stripDone(name) { return String(name || "").replace(/^\s*✓\s*/, ""); }
-
-    function planDone(records, done) {
-        var plan = [];
-        records.forEach(function (r) {
-            if (isDone(r) === !!done) return;
-            plan.push({ record: r, name: done ? DONE_MARK + stripDone(r.name) : stripDone(r.name) });
-        });
-        return plan;
-    }
-
-    // Progresso geral e por cor: { done, total, byColor: [{ index, done, total }] } (ordem do índice)
-    function progress(records) {
-        var by = {}, done = 0;
-        (records || []).forEach(function (r) {
-            var b = by[r.colorIndex] = by[r.colorIndex] || { index: r.colorIndex, done: 0, total: 0 };
-            b.total++;
-            if (isDone(r)) { b.done++; done++; }
-        });
-        var byColor = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.index - b.index; });
-        return { done: done, total: (records || []).length, byColor: byColor };
-    }
-
     return {
         planColorsForNew: planColorsForNew,
         planCopy: planCopy,
@@ -448,18 +323,7 @@
         clipToSequence: clipToSequence,
         sequenceToClip: sequenceToClip,
         skipExistingTicks: skipExistingTicks,
-        DONE_MARK: DONE_MARK,
-        isDone: isDone,
-        stripDone: stripDone,
-        planDone: planDone,
-        progress: progress,
         planCutMarkers: planCutMarkers,
-        planDuration: planDuration,
-        planDistribute: planDistribute,
-        planSnap: planSnap,
-        clusters: clusters,
-        planDedupe: planDedupe,
-        planMerge: planMerge,
         TYPES: TYPES,
         sameType: sameType,
         planColor: planColor,

@@ -6,6 +6,8 @@
 - Instalação pelo pacote `.ccx` (dois cliques; o app Creative Cloud instala).
 - Interface mais limpa: textos e botões mais curtos, menos explicações repetidas, mais espaço entre os elementos, grupos separados por linhas e botões com contorno visível; as prévias só aparecem com marcadores selecionados.
 - Novo logotipo (capacete roxo de vidro) no painel e nos ícones.
+- Painel mais enxuto: saíram o cartão Tempo e limpeza (duração, distribuir, encaixar no corte, duplicados e mesclar), o checklist (o cartão agora é só Legenda) e a criação de marcadores de teste. Ferramentas ficou só com a rolagem e o log (antes Diagnóstico).
+- Nova ordem dos cartões: Editar selecionados, Mover, Localizar e numerar, Modelos de marcador, Legenda, Sequências e clipes, Importar e gerar, Exportar, Ferramentas.
 - Novo: **Levar ao playhead** (cartão Mover). O primeiro marcador selecionado vai para o playhead e os outros vão junto, com o mesmo espaço entre eles. Só funciona com marcadores seguidos (nenhum outro no meio, nem escondido pelos filtros). Um Ctrl+Z desfaz.
 
 ## 0.3.0 — produtividade e importação (fases 2 e 3)

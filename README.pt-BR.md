@@ -22,11 +22,10 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 - Duplo clique no nome ou comentário da lista para editar ali mesmo.
 - Modelos de marcador (nome, cor, tipo, comentário): aplicar na seleção ou criar um marcador no playhead.
 - Seleções salvas com nome, por sequência.
-- Tempo: mesma duração para vários, distribuir igualmente, encaixar no corte mais próximo, remover duplicados e mesclar próximos.
 - Importar de lista colada, CSV (inclusive o do Premiere), SRT, EDL ou JSON, com prévia; criar um marcador em cada corte.
 - Exportar também lista de revisão, texto simples e JSON.
 - Copiar marcadores para outra sequência; trazer marcadores do clipe para a sequência e enviar da sequência para o clipe.
-- Checklist (marcar como feito, progresso por cor) e legenda das cores.
+- Legenda das cores (o que cada cor significa).
 - Atualiza a lista sozinho: ao trocar de sequência e com uma verificação leve a cada poucos segundos (o Premiere não avisa quando um marcador é criado na timeline).
 
 ## Requisitos

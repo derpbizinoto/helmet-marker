@@ -206,17 +206,6 @@ test("buildColorTable aceita vazio e ignora não-números", () => {
 test("colorFor com índice desconhecido", () => {
     assert.strictEqual(M.colorFor([], 9).label, "Cor 9");
 });
-test("planTestMarkers", () => {
-    const p = M.planTestMarkers(500, 12, 0, null, "Teste ");
-    assert.strictEqual(p.length, 500);
-    assert.strictEqual(p[0].name, "Teste 001");
-    assert.strictEqual(p[499].name, "Teste 500");
-    assert.strictEqual(p[499].frame, 499 * 12);
-    assert.throws(() => M.planTestMarkers(0, 12));
-    assert.throws(() => M.planTestMarkers(10, 0));
-    assert.throws(() => M.planTestMarkers(1.5, 1));
-});
-
 // ---------------------------------------------------------------------------
 // Traduções
 // ---------------------------------------------------------------------------
@@ -249,9 +238,6 @@ test("planShift em frames inteiros", () => {
 test("planShift recusa ir antes do início e frações", () => {
     assert.throws(() => PL.planShift([{ startFrame: 5 }], -6), /antes do início/);
     assert.throws(() => PL.planShift([{ startFrame: 5 }], 1.5), /inteiro/);
-});
-test("duração é campo de texto (o campo de número do Premiere estraga 2,5 e 2.5)", () => {
-    assert.ok(/<input id="durValue"[^>]*type="text"/.test(read("index.html")));
 });
 test("todos os arquivos do painel são JavaScript válido", () => {
     ["ui/panel.js", "premiere/ppro.js", "strings/i18n.js"].forEach((rel) => {
@@ -461,54 +447,6 @@ test("seleção salva: acha o que está na lista e conta o que sumiu", () => {
     assert.deepStrictEqual([res.found, res.missing], [1, 2]);
     assert.throws(() => LIB.makeSelection("", ["a"]), /nome à seleção/);
     assert.throws(() => LIB.makeSelection("x", []), /Selecione marcadores/);
-});
-
-// ---------------------------------------------------------------------------
-// Fase 2 (parte B): duração, distribuir, cortes, duplicados
-// ---------------------------------------------------------------------------
-
-test("duração: mesma para todos, 0 = pontual, recusa fração e negativo", () => {
-    const p = PL.planDuration(RECS, 50);
-    assert.ok(p.every((x) => x.durationFrames === 50));
-    assert.ok(!p.some((x) => x.record.key === "c"));            // já tinha 50
-    assert.deepStrictEqual(PL.planDuration(RECS, 0).map((x) => x.record.key), ["c"]);
-    assert.throws(() => PL.planDuration(RECS, 1.5), /inteiro de 0 ou mais/);
-    assert.throws(() => PL.planDuration(RECS, -1), /inteiro de 0 ou mais/);
-});
-test("distribuir: primeiro e último ficam, meio igualmente espaçado em frames inteiros", () => {
-    const r = [rec("a", 0), rec("d", 100), rec("b", 10), rec("c", 11)];
-    const p = PL.planDistribute(r);
-    const to = {};
-    p.forEach((x) => { to[x.record.key] = x.toFrame; });
-    assert.deepStrictEqual(to, { b: 33, c: 67 });
-    assert.ok(p.every((x) => Number.isInteger(x.toFrame)));
-    assert.throws(() => PL.planDistribute(r.slice(0, 2)), /pelo menos 3/);
-});
-test("encaixar no corte: corte mais próximo dentro da distância; empate vai para o anterior", () => {
-    const r = [rec("a", 12), rec("b", 50), rec("c", 100), rec("d", 15)];
-    const p = PL.planSnap(r, [10, 20, 100, 60], 5);
-    const to = {};
-    p.forEach((x) => { to[x.record.key] = x.toFrame; });
-    assert.deepStrictEqual(to, { a: 10, d: 10 });
-    assert.throws(() => PL.planSnap(r, [], 5), /Não há clipes/);
-    assert.throws(() => PL.planSnap(r, [10], 0), /distância máxima/);
-});
-test("duplicados: mesmo frame com 0; grupos contados a partir do primeiro", () => {
-    const r = [rec("a", 0), rec("b", 0), rec("c", 3), rec("d", 6), rec("e", 100)];
-    assert.deepStrictEqual(PL.planDedupe(r, 0).map((x) => x.record.key), ["b"]);
-    // tolerância 4: grupo {a,b,c} (até frame 4), d começa grupo novo sozinho
-    assert.deepStrictEqual(PL.planDedupe(r, 4).map((x) => x.record.key), ["b", "c"]);
-    assert.ok(PL.planDedupe(r, 4).every((x) => x.remove));
-    assert.throws(() => PL.planDedupe(r, -1), /distância/);
-});
-test("mesclar: junta comentários sem repetir, herda nome, exclui os outros", () => {
-    const r = [rec("a", 0, { comments: "áudio" }), rec("b", 2, { name: "Cena", comments: "cor" }), rec("c", 3, { comments: "áudio" }), rec("z", 90)];
-    const p = PL.planMerge(r, 5);
-    const keep = p.find((x) => x.record.key === "a");
-    assert.strictEqual(keep.comments, "áudio | cor");
-    assert.strictEqual(keep.name, "Cena");
-    assert.deepStrictEqual(p.filter((x) => x.remove).map((x) => x.record.key), ["b", "c"]);
-    assert.strictEqual(PL.planMerge([rec("x", 0), rec("y", 50)], 5).length, 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -730,7 +668,7 @@ test("marcador em cada corte: pula o fim e os que já têm marcador", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Fase 3 parte B: outra sequência, clipe <-> sequência, checklist
+// Fase 3 parte B: outra sequência, clipe <-> sequência
 // ---------------------------------------------------------------------------
 test("cores dos novos: casa frame+nome, uma vez cada, ignora os antigos", () => {
     const recs = [rec("old", 10, { name: "A", colorIndex: 0 }), rec("n1", 10, { name: "A", colorIndex: 0 }), rec("n2", 20, { name: "B", colorIndex: 1 })];
@@ -766,16 +704,6 @@ test("sequência -> clipe: só os que caem no clipe, no tempo da mídia; pula re
     const k = PL.skipExistingTicks(items, [{ startTicks: 70 * TPF + 100, name: "B" }], TPF);
     assert.deepStrictEqual([k.items.map((i) => i.name), k.skipped], [["C"], 1]);
 });
-test("checklist: marcar e desmarcar feito, progresso por cor", () => {
-    const recs = [rec("a", 0, { name: "Intro", colorIndex: 1 }), rec("b", 10, { name: "✓ Fala", colorIndex: 1 }), rec("c", 20, { name: "", colorIndex: 6 })];
-    assert.deepStrictEqual(PL.planDone(recs, true).map((p) => p.name), ["✓ Intro", "✓ "]);
-    assert.deepStrictEqual(PL.planDone(recs, false).map((p) => p.name), ["Fala"]);
-    const p = PL.progress(recs);
-    assert.deepStrictEqual([p.done, p.total], [1, 3]);
-    assert.deepStrictEqual(p.byColor, [{ index: 1, done: 1, total: 2 }, { index: 6, done: 0, total: 1 }]);
-    assert.ok(PL.isDone({ name: "  ✓pronto" }));
-});
-
 const SOURCES = ["ui/panel.js", "premiere/ppro.js", "core/markers.js", "core/timecode.js", "core/selection.js", "core/plans.js", "core/export.js", "core/library.js", "core/importers.js"];
 
 function literalCalls(src, fnNames) {

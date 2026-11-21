@@ -147,6 +147,31 @@
             </div>
         </section>
 
+        <!-- ================= mover ================= -->
+        <section class="card" data-card="move">
+            <div class="card-title">Mover</div>
+            <div class="edit-row">
+                <div role="button" id="btnMinusSec" class="btn btn-secondary btn-sm">−1 s</div>
+                <div role="button" id="btnMinusFrame" class="btn btn-secondary btn-sm">−1 frame</div>
+                <div role="button" id="btnPlusFrame" class="btn btn-secondary btn-sm">+1 frame</div>
+                <div role="button" id="btnPlusSec" class="btn btn-secondary btn-sm">+1 s</div>
+                <span class="sep"></span>
+                <span class="field-label">Deslocar</span>
+                <input id="moveFrames" class="input num" type="number" value="0" />
+                <span class="field-label">frames</span>
+                <div role="button" id="btnMove" class="btn btn-primary btn-sm">Aplicar</div>
+            </div>
+            <div class="edit-row">
+                <div role="button" id="chipAfterPlayhead" class="chip">Tudo após o playhead</div>
+                <span class="preview" id="pvMove"></span>
+            </div>
+            <div class="edit-row">
+                <div role="button" id="btnToPlayhead" class="btn btn-primary btn-sm">Levar ao playhead</div>
+                <span class="preview" id="pvToPlayhead"></span>
+            </div>
+            <div class="hint">O primeiro vai ao playhead; os outros acompanham.</div>
+        </section>
+
         <!-- ================= localizar e numerar ================= -->
         <section class="card" data-card="find">
             <div class="card-title">Localizar e numerar</div>
@@ -236,89 +261,31 @@
             <div class="hint">Modelo com cor: desfazer leva dois Ctrl+Z.</div>
         </section>
 
-        <!-- ================= mover ================= -->
-        <section class="card" data-card="move">
-            <div class="card-title">Mover</div>
-            <div class="edit-row">
-                <div role="button" id="btnMinusSec" class="btn btn-secondary btn-sm">−1 s</div>
-                <div role="button" id="btnMinusFrame" class="btn btn-secondary btn-sm">−1 frame</div>
-                <div role="button" id="btnPlusFrame" class="btn btn-secondary btn-sm">+1 frame</div>
-                <div role="button" id="btnPlusSec" class="btn btn-secondary btn-sm">+1 s</div>
-                <span class="sep"></span>
-                <span class="field-label">Deslocar</span>
-                <input id="moveFrames" class="input num" type="number" value="0" />
-                <span class="field-label">frames</span>
-                <div role="button" id="btnMove" class="btn btn-primary btn-sm">Aplicar</div>
-            </div>
-            <div class="edit-row">
-                <div role="button" id="chipAfterPlayhead" class="chip">Tudo após o playhead</div>
-                <span class="preview" id="pvMove"></span>
-            </div>
-            <div class="edit-row">
-                <div role="button" id="btnToPlayhead" class="btn btn-primary btn-sm">Levar ao playhead</div>
-                <span class="preview" id="pvToPlayhead"></span>
-            </div>
-            <div class="hint">O primeiro vai ao playhead; os outros acompanham.</div>
+        <!-- ================= legenda ================= -->
+        <section class="card" data-card="legend">
+            <div class="card-title">Legenda</div>
+            <div id="legendRows"></div>
+            <div class="hint">O que cada cor significa (ex.: Vermelho = corrigir).</div>
         </section>
 
-        <!-- ================= tempo e limpeza ================= -->
-        <section class="card" data-card="timing">
-            <div class="card-title">Tempo e limpeza</div>
-
-            <div class="group-label">Duração</div>
+        <!-- ================= sequências e clipes ================= -->
+        <section class="card" data-card="seqclip">
+            <div class="card-title">Sequências e clipes</div>
+            <div class="group-label">Copiar para outra sequência</div>
             <div class="edit-row">
-                <!-- texto, não "number": o campo de número do Premiere arredonda 2,5 para 3 e lê
-                     2.5 como 25 (ponto de milhar); o painel lê o número aceitando vírgula ou ponto -->
-                <input id="durValue" class="input num" type="text" value="1" />
-                <select id="durUnit" class="input">
-                    <option value="seconds">segundos</option>
-                    <option value="frames">frames</option>
-                </select>
-                <div role="button" id="btnDuration" class="btn btn-primary btn-sm">Aplicar</div>
-                <div role="button" id="btnPoint" class="btn btn-secondary btn-sm">Tornar pontuais</div>
-                <span class="preview" id="pvDuration"></span>
+                <select id="copyTarget" class="input grow"></select>
+                <div role="button" id="btnSeqRefresh" class="btn btn-ghost btn-sm">Atualizar</div>
+                <div role="button" id="btnCopy" class="btn btn-primary btn-sm">Copiar</div>
+                <span class="preview" id="pvCopy"></span>
             </div>
+            <div class="hint">Selecionados (ou todos da lista), no mesmo tempo contado do início.</div>
 
-            <div class="group-label">Distribuir</div>
+            <div class="group-label">Clipe e sequência</div>
             <div class="edit-row">
-                <div role="button" id="btnDistribute" class="btn btn-primary btn-sm">Distribuir</div>
-                <span class="preview" id="pvDistribute"></span>
+                <div role="button" id="btnClipToSeq" class="btn btn-primary btn-sm">Trazer do clipe</div>
+                <div role="button" id="btnSeqToClip" class="btn btn-secondary btn-sm">Enviar para o clipe</div>
             </div>
-            <div class="hint">Mesmo espaço entre o primeiro e o último.</div>
-
-
-            <div class="group-label">Encaixar no corte</div>
-            <div class="edit-row">
-                <select id="snapTracks" class="input">
-                    <option value="both">Clipes de vídeo e áudio</option>
-                    <option value="video">Só clipes de vídeo</option>
-                    <option value="audio">Só clipes de áudio</option>
-                </select>
-                <span class="field-label">até</span>
-                <input id="snapMax" class="input num" type="number" value="30" />
-                <span class="field-label">frames</span>
-                <div role="button" id="btnSnap" class="btn btn-primary btn-sm">Encaixar</div>
-                <span class="preview" id="pvSnap"></span>
-            </div>
-            <div class="hint">Corte = começo ou fim de clipe.</div>
-
-            <div class="group-label">Duplicados e próximos</div>
-            <div class="edit-row">
-                <span class="field-label">Distância</span>
-                <input id="cleanTol" class="input num" type="number" value="0" />
-                <span class="field-label">frames</span>
-                <div role="button" id="btnDedupe" class="btn btn-danger btn-sm">Remover</div>
-                <div role="button" id="btnMerge" class="btn btn-secondary btn-sm">Mesclar</div>
-            </div>
-            <div class="edit-row">
-                <span class="preview" id="pvClean"></span>
-            </div>
-            <div class="confirm" id="confirmClean">
-                <span id="confirmCleanText"></span>
-                <div role="button" id="btnCleanYes" class="btn btn-danger btn-sm">Confirmar</div>
-                <div role="button" id="btnCleanNo" class="btn btn-secondary btn-sm">Cancelar</div>
-            </div>
-            <div class="hint">Remover deixa o primeiro; Mesclar junta os comentários nele.</div>
+            <div class="hint">Selecione clipes na timeline antes. Clipes com velocidade alterada ficam de fora.</div>
         </section>
 
         <!-- ================= importar e gerar ================= -->
@@ -372,45 +339,6 @@
             <div class="hint">Numerados. Pula os cortes que já têm marcador.</div>
         </section>
 
-        <!-- ================= sequências e clipes ================= -->
-        <section class="card" data-card="seqclip">
-            <div class="card-title">Sequências e clipes</div>
-            <div class="group-label">Copiar para outra sequência</div>
-            <div class="edit-row">
-                <select id="copyTarget" class="input grow"></select>
-                <div role="button" id="btnSeqRefresh" class="btn btn-ghost btn-sm">Atualizar</div>
-                <div role="button" id="btnCopy" class="btn btn-primary btn-sm">Copiar</div>
-                <span class="preview" id="pvCopy"></span>
-            </div>
-            <div class="hint">Selecionados (ou todos da lista), no mesmo tempo contado do início.</div>
-
-            <div class="group-label">Clipe e sequência</div>
-            <div class="edit-row">
-                <div role="button" id="btnClipToSeq" class="btn btn-primary btn-sm">Trazer do clipe</div>
-                <div role="button" id="btnSeqToClip" class="btn btn-secondary btn-sm">Enviar para o clipe</div>
-            </div>
-            <div class="hint">Selecione clipes na timeline antes. Clipes com velocidade alterada ficam de fora.</div>
-        </section>
-
-        <!-- ================= checklist e legenda ================= -->
-        <section class="card" data-card="checklist">
-            <div class="card-title">Checklist e legenda</div>
-            <div class="edit-row">
-                <div role="button" id="btnDone" class="btn btn-primary btn-sm">Marcar feito</div>
-                <div role="button" id="btnUndone" class="btn btn-secondary btn-sm">Desmarcar</div>
-                <span class="sep"></span>
-                <span class="field-label">Selecionar</span>
-                <div role="button" id="btnSelPending" class="btn btn-ghost btn-sm">Pendentes</div>
-                <div role="button" id="btnSelDone" class="btn btn-ghost btn-sm">Feitos</div>
-            </div>
-            <div class="counts" id="checkProgress"></div>
-            <div class="hint">Feito põe ✓ no começo do nome.</div>
-
-            <div class="group-label">Legenda das cores</div>
-            <div id="legendRows"></div>
-            <div class="hint">O que cada cor significa (ex.: Vermelho = corrigir).</div>
-        </section>
-
         <!-- ================= exportar ================= -->
         <section class="card" data-card="export">
             <div class="card-title">Exportar</div>
@@ -448,20 +376,11 @@
             </div>
         </section>
 
-        <!-- ================= testes e diagnóstico ================= -->
+        <!-- ================= ferramentas ================= -->
         <section class="card" data-card="tools">
-            <div class="card-title">Ferramentas de teste</div>
+            <div class="card-title">Ferramentas</div>
+            <div class="group-label">Rolagem</div>
             <div class="edit-row">
-                <span class="field-label">Criar</span>
-                <input id="testCount" class="input num" type="number" value="500" />
-                <span class="field-label">marcadores, a cada</span>
-                <input id="testStep" class="input num" type="number" value="12" />
-                <span class="field-label">frames</span>
-                <div role="button" id="btnTest" class="btn btn-secondary btn-sm">Criar</div>
-            </div>
-            <div class="group-label">Painel</div>
-            <div class="edit-row">
-                <span class="field-label">Rolagem</span>
                 <select id="scrollSpeed" class="input">
                     <option value="1">Normal</option>
                     <option value="2">2x</option>
@@ -470,7 +389,7 @@
                     <option value="6">6x</option>
                 </select>
             </div>
-            <div class="group-label">Diagnóstico</div>
+            <div class="group-label">Log</div>
             <div class="diag" id="diag"></div>
         </section>
     </main>
