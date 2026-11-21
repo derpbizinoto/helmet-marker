@@ -1,0 +1,70 @@
+# Helmet Marker
+
+**English** · [Português](README.pt-BR.md)
+
+A **UXP** plugin for Adobe Premiere Pro: a panel to select and edit markers in bulk, something Premiere doesn't do on its own. Every bulk operation becomes **a single step in the history**, so one Ctrl+Z undoes all of it.
+
+Same visual identity as [Helmet DL](https://github.com/derpbizinoto/helmet-dl), [Helmet Cutter](https://github.com/derpbizinoto/helmet-cutter) and [Helmet Library](https://github.com/derpbizinoto/helmet-library): Classic theme (Violet Terminal), Geo for the name and Roboto everywhere else.
+
+Current version: **0.1.0** — proof of concept (phase 0). What changed is in [CHANGELOG.md](CHANGELOG.md) (Portuguese).
+
+Free and open source ([MIT license](LICENSE)).
+
+## Requirements
+
+- **Premiere Pro 26.5 or newer** (Windows or macOS).
+- To load it during development: **UXP Developer Tool 2.2 or newer** (free, from Creative Cloud).
+- To run the automated tests: **Node.js** (any current version).
+
+## Install for use (.ccx package)
+
+1. Close Premiere.
+2. Double-click `HelmetMarker-<version>.ccx`. The Creative Cloud app opens and installs the plugin.
+3. Open Premiere and go to **Window › UXP Plugins › Helmet Marker**.
+
+## Load during development (UXP Developer Tool)
+
+Once:
+
+1. In the **Creative Cloud** app, go to **All apps**, search for **UXP Developer Tools** and click **Install**.
+2. Open the **UXP Developer Tool**. The first time it asks to enable developer mode: click **Enable** (needs administrator rights).
+3. In Premiere, go to **Settings › Plugins**, check **Enable developer mode** and restart Premiere.
+
+Every time:
+
+1. Open Premiere and a project.
+2. In the UXP Developer Tool, click **Add Plugin** and choose `plugin\manifest.json` from this folder (first time only).
+3. On the Helmet Marker row, click **••• › Load** (or **Load & Watch**, which reloads when the code changes).
+4. The panel opens in Premiere. If you close it, reopen it from **Window › UXP Plugins › Helmet Marker**.
+5. If `manifest.json` changes, click **Unload** and then **Load** again.
+6. **Debug** opens the panel console.
+
+## Package (.ccx)
+
+- **Script:** in the project folder, run
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
+  ```
+  It runs the tests, checks the version and creates `dist\HelmetMarker-<version>.ccx` plus a `.zip` with the .ccx, license and readmes.
+- **UXP Developer Tool:** on the plugin row, **••• › Package**, then choose a folder.
+
+## Automated tests
+
+```powershell
+node tests\run-tests.js
+```
+
+They cover the part that doesn't depend on Premiere (`plugin\core\`): frame and timecode math at 23.976, 25, 29.97 (drop and non-drop), 59.94 and 60 fps, marker identity, colors, selection, offsets and translations. They don't replace testing inside Premiere.
+
+## Code layout
+
+| Folder | Contents |
+|---|---|
+| `plugin/core/` | Pure logic (frames, timecode, selection, change plans). No Premiere calls; tested with Node. |
+| `plugin/premiere/` | Thin layer that reads markers and applies changes in a single transaction. |
+| `plugin/ui/` | The panel. |
+| `plugin/strings/` | All interface text (Portuguese and English). |
+
+## Language
+
+The panel opens in English. Switch it in **Language / Idioma**, top right; the choice is remembered.

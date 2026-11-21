@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Helmet Marker</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <header class="app-header">
+        <div class="brand">
+            <img class="brand-logo" src="img/logo.png" alt="" width="34" height="28" />
+            <div class="brand-text">
+                <h1>HELMET MARKER</h1>
+                <div class="sub-info"><span id="version"></span> · <span>Prova de conceito</span></div>
+            </div>
+        </div>
+        <div class="lang">
+            <span class="lang-label">Language / Idioma</span>
+            <select id="langSelect" class="input">
+                <option value="en">English</option>
+                <option value="pt">Português</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="content">
+        <section class="card list-card">
+            <div class="toolbar">
+                <div class="seq-info" id="seqInfo">Nenhuma sequência ativa</div>
+                <button id="btnRefresh" class="btn btn-secondary btn-sm">Atualizar</button>
+            </div>
+            <div class="list-head">
+                <span class="c swatch"></span>
+                <span class="c tc">Timecode</span>
+                <span class="c name">Nome</span>
+                <span class="c comment">Comentário</span>
+                <span class="c type">Tipo</span>
+                <span class="c dur">Duração</span>
+            </div>
+            <div class="list" id="list"></div>
+            <div class="empty" id="empty">Abra uma sequência na timeline e clique em Atualizar.</div>
+            <div class="hint">Clique para selecionar. Ctrl+clique para adicionar ou tirar da seleção.</div>
+            <div class="hint" id="selInfo"></div>
+        </section>
+
+        <section class="card">
+            <div class="card-title">Testes da fase 0</div>
+
+            <div class="action-row">
+                <button id="btnMove" class="btn btn-primary">Mover +10 frames</button>
+                <span class="hint">Com 1 marcador selecionado.</span>
+            </div>
+
+            <div class="action-row">
+                <select id="colorSelect" class="input"></select>
+                <button id="btnColor" class="btn btn-primary">Mudar cor</button>
+                <span class="hint">Com 2 marcadores selecionados (uma única operação).</span>
+            </div>
+
+            <div class="group-label">Gerador de marcadores de teste</div>
+            <div class="action-row">
+                <span class="field-label">Quantidade</span>
+                <input id="testCount" class="input num" type="number" value="500" />
+                <span class="field-label">a cada (frames)</span>
+                <input id="testStep" class="input num" type="number" value="12" />
+                <button id="btnTest" class="btn btn-secondary">Criar</button>
+            </div>
+            <div class="hint">Cria marcadores do tipo Comentário a partir do início da sequência, numa única operação.</div>
+        </section>
+
+        <section class="card">
+            <div class="card-title">Diagnóstico</div>
+            <div class="diag" id="diag"></div>
+        </section>
+    </main>
+
+    <div class="status" id="status"></div>
+
+    <script src="core/version.js"></script>
+    <script src="strings/i18n.js"></script>
+    <script src="core/timecode.js"></script>
+    <script src="core/markers.js"></script>
+    <script src="premiere/ppro.js"></script>
+    <script src="ui/panel.js"></script>
+</body>
+</html>
