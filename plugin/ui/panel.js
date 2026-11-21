@@ -690,7 +690,7 @@
     // ---------- fase 2 (parte B): duração, distribuir, cortes, limpeza ----------
     function durationFrames() {
         var v = numField("durValue");
-        if ($("durUnit").value === "seconds") {
+        if ($("durUnit").value !== "frames") {
             if (!isFinite(v) || v < 0) throw new Error("A duração precisa ser um número de 0 ou mais.");
             return PL.secondsToFrames(v, state.ctx.info);
         }
@@ -1617,10 +1617,25 @@
         card.querySelector(".card-body").style.display = closed ? "none" : "block";
     }
 
+    // Lista sem escolha (em branco): no Premiere 26.5.2 isso aconteceu com "segundos/frames" e
+    // "Clipes de vídeo e áudio". Se o valor não for uma das opções, escolhe a primeira.
+    function fixSelects(root) {
+        var sels = (root || document).querySelectorAll("select");
+        for (var i = 0; i < sels.length; i++) {
+            var sel = sels[i], values = [];
+            for (var j = 0; j < sel.childNodes.length; j++) {
+                var o = sel.childNodes[j];
+                if (o.tagName === "OPTION") values.push(o.getAttribute("value") || "");
+            }
+            if (values.length && values.indexOf(sel.value) < 0) sel.value = values[0];
+        }
+    }
+
     function toggleCard(key) {
         cardState[key] = !isCollapsed(key);
         try { window.localStorage.setItem(CARDS_KEY, JSON.stringify(cardState)); } catch (e) { /* só nesta sessão */ }
         paintCard(key);
+        if (!isCollapsed(key)) fixSelects(document.querySelector('section[data-card="' + key + '"]'));
         if (key === "tools") renderDiagnostics();
         if (key === "import") renderImportPreview();
         if (key === "checklist") { legendSig = ""; renderChecklist(); }
@@ -1807,6 +1822,7 @@
             renderSavedList(true);
             if (hasSeq()) render(); else renderDiagnostics();
             setText($("seqInfo"), seqLine());
+            fixSelects();
         });
 
         on("btnRefresh", "click", function () { readAndReport(N("botão Atualizar")); });
@@ -1932,6 +1948,8 @@
         }
         renderDiagnostics();
         updateButtons();
+        fixSelects();
+        setTimeout(fixSelects, 300);
         readAndReport(N("abertura do painel")).then(schedulePoll);
     }
 

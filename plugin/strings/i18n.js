@@ -549,12 +549,18 @@ var HMI18n = (function () {
 
     // Recria as <option> de uma lista com os textos atuais e devolve a escolha que estava.
     // As <option> novas entram na lista "fixed" no lugar das antigas.
+    // No Premiere (26.5.2), logo ao abrir o painel a lista pode responder value vazio; se isso
+    // fosse devolvido, a lista ficava sem escolha (em branco). Então, se o valor não for uma das
+    // opções, vale a primeira.
     function rebuildSelect(sel) {
-        var value = sel.value;
         var old = Array.prototype.slice.call(sel.childNodes).filter(function (n) { return n.tagName === "OPTION"; });
-        old.forEach(function (o) {
+        var values = old.map(function (o) { return o.getAttribute("value") || ""; });
+        var value = sel.value;
+        if (values.indexOf(value) < 0) value = values[0];
+        old.forEach(function (o, i) {
             var n = document.createElement("option");
-            n.setAttribute("value", o.getAttribute("value") || "");
+            n.setAttribute("value", values[i]);
+            if (values[i] === value) n.setAttribute("selected", "selected");
             n.textContent = o.textContent;
             sel.replaceChild(n, o);
             fixed.forEach(function (f) { if (f.option === o) f.option = n; });

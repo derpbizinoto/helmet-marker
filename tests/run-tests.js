@@ -253,6 +253,11 @@ test("planShift recusa ir antes do início e frações", () => {
 test("duração é campo de texto (o campo de número do Premiere estraga 2,5 e 2.5)", () => {
     assert.ok(/<input id="durValue"[^>]*type="text"/.test(read("index.html")));
 });
+test("todos os arquivos do painel são JavaScript válido", () => {
+    ["ui/panel.js", "premiere/ppro.js", "strings/i18n.js"].forEach((rel) => {
+        assert.doesNotThrow(() => new vm.Script(read(rel), { filename: rel }), rel);
+    });
+});
 test("painel nunca escreve num campo por fieldText (só lê)", () => {
     const src = read("ui/panel.js");
     assert.ok(!/fieldText\([^)]*\)\s*=[^=]/.test(src), "use setField para escrever");
