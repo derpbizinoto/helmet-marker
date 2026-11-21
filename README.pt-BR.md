@@ -10,6 +10,10 @@ Versão atual: **1.0.0**. O que mudou está no [CHANGELOG.md](CHANGELOG.md).
 
 Gratuito e de código aberto ([licença MIT](LICENSE)).
 
+![Painel do Helmet Marker](docs/screenshots/pt/painel.png)
+
+**[⬇ Baixar a versão mais nova](https://github.com/derpbizinoto/helmet-marker/releases/latest)**: Premiere Pro 26.5 ou mais novo, Windows ou macOS.
+
 ## O que faz
 
 - Lista os marcadores da sequência ativa (timecode com drop-frame, nome, comentário, cor, tipo, duração). Clique leva o playhead até o marcador.
@@ -36,7 +40,7 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 
 ## Instalar
 
-1. Baixe o `.zip` da versão mais nova na página [Releases](https://github.com/derpbizinoto/helmet-marker/releases) e extraia.
+1. Baixe o `.zip` da versão mais nova na página [releases](https://github.com/derpbizinoto/helmet-marker/releases/latest) e extraia.
 2. Feche o Premiere.
 3. Dê dois cliques no arquivo `HelmetMarker-<versão>.ccx`. O app Creative Cloud abre e instala o plugin.
 4. Abra o Premiere e vá em **Janela › Plug-ins UXP › Helmet Marker** (*Window › UXP Plugins*).

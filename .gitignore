@@ -16,6 +16,9 @@ build/
 # Páginas de teste no navegador (criadas e apagadas durante o desenvolvimento)
 plugin/__mock.js
 plugin/__demo.html
+plugin/__pre.js
+plugin/__after.js
+plugin/__shot.html
 
 # Temporários
 *.tmp
