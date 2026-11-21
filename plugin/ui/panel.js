@@ -14,7 +14,8 @@
         busy: false,
         pendingRefresh: false,
         events: [],
-        lastEvent: ""
+        lastEvent: "",
+        lastRead: null          // { time, reason } da última leitura bem-sucedida
     };
 
     function $(id) { return document.getElementById(id); }
@@ -37,8 +38,9 @@
 
     // ---------- leitura ----------
     // doneMessage: mensagem de uma ação que acabou de rodar; fica na barra depois de reler.
-    async function refresh(doneMessage) {
-        if (state.busy) { state.pendingRefresh = true; return; }
+    // reason: por que leu (aparece no diagnóstico): N("abertura do painel"), nome do evento…
+    async function refresh(doneMessage, reason) {
+        if (state.busy) { state.pendingRefresh = reason || N("pedido durante outra leitura"); return; }
         state.busy = true;
         updateButtons();
         var t0 = Date.now();
@@ -55,6 +57,7 @@
             }
             state.records = await P.readMarkers(ctx);
             state.selected = M.pruneSelection(state.selected, state.records);
+            state.lastRead = { time: new Date().toLocaleTimeString(), reason: reason || N("botão Atualizar") };
             render();
             if (doneMessage) setStatus(doneMessage, "ok");
             else setStatus(tr("{0} marcadores lidos em {1} ms.", state.records.length, Date.now() - t0), "ok");
@@ -64,8 +67,9 @@
             state.busy = false;
             updateButtons();
             if (state.pendingRefresh) {
+                var again = state.pendingRefresh;
                 state.pendingRefresh = false;
-                refresh();
+                refresh(null, again);
             }
         }
     }
@@ -156,6 +160,7 @@
         var lines = [];
         lines.push(tr("Eventos registrados: {0}", state.events.length ? state.events.join(", ") : tr("nenhum")));
         lines.push(tr("Último evento recebido: {0}", state.lastEvent || tr("nenhum")));
+        lines.push(tr("Última leitura: {0}", state.lastRead ? state.lastRead.time + " (" + tr(state.lastRead.reason) + ")" : tr("nenhuma")));
         if (ctx && ctx.sequence) {
             lines.push(tr("Ticks por frame: {0}", ctx.ticksPerFrame));
             lines.push(tr("Início da sequência: {0}", tcOf(ctx, 0)));
@@ -215,7 +220,7 @@
             return;
         }
         state.busy = false;
-        await refresh(message);
+        await refresh(message, N("depois de uma operação do painel"));
     }
 
     function onMove() {
@@ -265,14 +270,13 @@
     }
 
     // ---------- eventos do Premiere ----------
-    var eventTimer = null;
+    // Lê na hora, sem esperar um temporizador: no teste da fase 0 a lista só atualizava ao
+    // clicar no painel, sinal de que o temporizador (setTimeout) não roda enquanto o painel
+    // está sem foco. Vários avisos seguidos não acumulam leituras: o refresh() junta os
+    // pedidos que chegam durante uma leitura numa única leitura extra.
     function onPremiereEvent(name) {
         state.lastEvent = name + " (" + new Date().toLocaleTimeString() + ")";
-        if (eventTimer) clearTimeout(eventTimer);
-        eventTimer = setTimeout(function () {
-            eventTimer = null;
-            refresh();
-        }, 400);
+        refresh(null, name);
     }
 
     // ---------- altura da área que rola ----------
@@ -302,7 +306,7 @@
             updateButtons();
         });
 
-        $("btnRefresh").addEventListener("click", function () { refresh(); });
+        $("btnRefresh").addEventListener("click", function () { refresh(null, N("botão Atualizar")); });
         $("btnMove").addEventListener("click", onMove);
         $("btnColor").addEventListener("click", onColor);
         $("btnTest").addEventListener("click", onTest);
@@ -321,7 +325,7 @@
             showError(e);
         }
         renderDiagnostics();
-        refresh();
+        refresh(null, N("abertura do painel"));
     }
 
     init();
