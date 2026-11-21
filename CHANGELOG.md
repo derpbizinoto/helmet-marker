@@ -1,5 +1,10 @@
 # Novidades
 
+## 1.0.0 — primeira versão estável
+
+- Reúne tudo das versões 0.1 a 0.3 (abaixo), com o código inteiro revisado e testado no Premiere 26.5.
+- Instalação pelo pacote `.ccx` (dois cliques; o app Creative Cloud instala).
+
 ## 0.3.0 — produtividade e importação (fases 2 e 3)
 
 - Copiar marcadores para outra sequência do projeto (mesmo tempo contado do início; com outra taxa de quadros, cai no frame mais próximo).

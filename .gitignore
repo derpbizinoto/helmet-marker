@@ -13,11 +13,9 @@ build/
 *.crt
 *.cer
 
-# Depuração do CEP (só na máquina de desenvolvimento; não vai no pacote)
-.debug
-
-# Previews gerados pela extensão (se alguém testar com uma biblioteca aqui dentro)
-.helmet-previews/
+# Páginas de teste no navegador (criadas e apagadas durante o desenvolvimento)
+plugin/__mock.js
+plugin/__demo.html
 
 # Temporários
 *.tmp

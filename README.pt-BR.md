@@ -6,7 +6,7 @@ Plugin **UXP** para o Adobe Premiere Pro: um painel para selecionar e editar mar
 
 Mesma identidade visual do [Helmet DL](https://github.com/derpbizinoto/helmet-dl), [Helmet Cutter](https://github.com/derpbizinoto/helmet-cutter) e [Helmet Library](https://github.com/derpbizinoto/helmet-library): tema Clássico (Violet Terminal), Geo no nome e Roboto no resto.
 
-Versão atual: **0.2.0** — MVP (fase 1). O que mudou está no [CHANGELOG.md](CHANGELOG.md).
+Versão atual: **1.0.0**. O que mudou está no [CHANGELOG.md](CHANGELOG.md).
 
 Gratuito e de código aberto ([licença MIT](LICENSE)).
 
@@ -31,54 +31,26 @@ Gratuito e de código aberto ([licença MIT](LICENSE)).
 
 ## Requisitos
 
-- **Premiere Pro 26.5 ou mais novo** (Windows ou macOS).
-- Para carregar durante o desenvolvimento: **UXP Developer Tool 2.2 ou mais novo** (gratuito, pelo Creative Cloud).
-- Para rodar os testes automáticos: **Node.js** (qualquer versão atual).
+- **Premiere Pro 26.5 ou mais novo** (Windows ou macOS), com o app **Creative Cloud**.
 
-## Instalar para usar (pacote .ccx)
+## Instalar
 
-1. Feche o Premiere.
-2. Dê dois cliques no arquivo `HelmetMarker-<versão>.ccx`. O app Creative Cloud abre e instala o plugin.
-3. Abra o Premiere e vá em **Janela › Plug-ins UXP › Helmet Marker** (*Window › UXP Plugins*).
+1. Baixe o `.zip` da versão mais nova na página [Releases](https://github.com/derpbizinoto/helmet-marker/releases) e extraia.
+2. Feche o Premiere.
+3. Dê dois cliques no arquivo `HelmetMarker-<versão>.ccx`. O app Creative Cloud abre e instala o plugin.
+4. Abra o Premiere e vá em **Janela › Plug-ins UXP › Helmet Marker** (*Window › UXP Plugins*).
 
-## Carregar durante o desenvolvimento (UXP Developer Tool)
+Para atualizar, faça o mesmo com o `.ccx` da versão nova. Para remover, use a área de plug-ins do app Creative Cloud.
 
-Feito uma vez:
+## Gerar o pacote (.ccx)
 
-1. No app **Creative Cloud**, vá em **Todos os aplicativos**, procure **UXP Developer Tools** e clique em **Instalar**.
-2. Abra o **UXP Developer Tool**. Na primeira vez ele pede para ativar o modo de desenvolvedor: clique em **Enable** (pede permissão de administrador).
-3. No Premiere, vá em **Configurações › Plug-ins** (*Settings › Plugins*), marque **Ativar modo de desenvolvedor** (*Enable developer mode*) e reinicie o Premiere.
+Para quem mexe no código. Precisa do **Node.js** (qualquer versão atual). Na pasta do projeto, rode
 
-Toda vez:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
+```
 
-1. Abra o Premiere e um projeto.
-2. No UXP Developer Tool, clique em **Add Plugin** e escolha o arquivo `plugin\manifest.json` desta pasta (só na primeira vez; depois ele já aparece na lista).
-3. Na linha do Helmet Marker, clique em **••• › Load** (ou **Load & Watch**, que recarrega sozinho quando o código muda).
-4. O painel abre no Premiere. Se fechar, reabra em **Janela › Plug-ins UXP › Helmet Marker**.
-5. Se o `manifest.json` mudar, clique em **Unload** e depois **Load** de novo.
-6. **Debug** abre o console do painel (útil para mandar mensagens de erro).
-
-## Carregar sem o UXP Developer Tool (copiando a pasta)
-
-Funcionou no Premiere 26.5.2, mas a Adobe não documenta este caminho.
-
-1. No Premiere, vá em **Configurações › Plug-ins** (*Settings › Plugins*), marque **Ativar modo de desenvolvedor** (*Enable developer mode*) e feche o Premiere.
-2. Crie a pasta `%APPDATA%\Adobe\UXP\Plugins\External\com.derpbizinoto.helmetmarker_<versão>` (ex.: `..._0.3.0`).
-3. Copie para dentro dela **o conteúdo** da pasta `plugin\` (não a pasta em si).
-4. Abra o Premiere: **Janela › Plug-ins UXP › Helmet Marker**.
-
-A cada atualização, copie os arquivos de novo e reinicie o Premiere. Se a versão mudar, o nome da pasta muda junto: crie a nova e apague a antiga.
-
-## Empacotar (.ccx)
-
-Duas formas, o resultado é o mesmo:
-
-- **Script:** na pasta do projeto, rode
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File .\empacotar.ps1
-  ```
-  Ele roda os testes, confere a versão e gera `dist\HelmetMarker-<versão>.ccx` e um `.zip` com o .ccx, a licença e os leia-me.
-- **UXP Developer Tool:** na linha do plugin, **••• › Package**, e escolha a pasta de destino.
+Ele roda os testes, confere a versão e gera `dist\HelmetMarker-<versão>.ccx` e um `.zip` com o .ccx, a licença e os leia-me.
 
 ## Testes automáticos
 

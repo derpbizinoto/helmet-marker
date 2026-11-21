@@ -2,7 +2,7 @@
     "manifestVersion": 5,
     "id": "com.derpbizinoto.helmetmarker",
     "name": "Helmet Marker",
-    "version": "0.3.0",
+    "version": "1.0.0",
     "main": "index.html",
     "host": {
         "app": "premierepro",
