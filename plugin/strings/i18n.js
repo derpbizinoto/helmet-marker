@@ -222,14 +222,7 @@ var HMI18n = (function () {
         "Só clipes de áudio": "Audio clips only",
         "Não há clipes nas trilhas escolhidas.": "There are no clips on the chosen tracks.",
 
-        "Rolagem": "Scrolling",
-        "Normal": "Normal",
-        "Roda do mouse no painel: {0}": "Mouse wheel in the panel: {0}",
-        "recebida": "received",
-        "ainda não recebida": "not received yet",
-        "Aviso de rolagem no painel: {0}": "Scroll notice in the panel: {0}",
         "recebido": "received",
-        "ainda não recebido": "not received yet",
         "Última atualização da lista: {0} ms": "Last list update: {0} ms",
 
         // --- cores e tipos ----------------------------------------------------------------
@@ -282,11 +275,7 @@ var HMI18n = (function () {
         "O Premiere não informou a posição do playhead.": "Premiere did not report the playhead position.",
         "Helmet Marker: levar ao playhead": "Helmet Marker: move to playhead",
         "Marcadores levados ao playhead: {0}. Um Ctrl+Z desfaz.": "Markers moved to the playhead: {0}. One Ctrl+Z undoes it.",
-        "Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):": "Latest scroll notices (area, ms, position, step, what the panel did):",
-        "ponta": "edge (not multiplied)",
-        "multiplicou": "multiplied",
         "barra": "scrollbar",
-        "ignorou": "ignored",
         "Sequências e clipes": "Sequences and clips",
         "Copiar para outra sequência": "Copy to another sequence",
         "Selecionados (ou todos da lista), no mesmo tempo contado do início.": "Selected (or all in the list), at the same time from the start.",
@@ -373,7 +362,7 @@ var HMI18n = (function () {
     };
 
     // Iguais nas duas línguas (os testes não cobram tradução para estes).
-    var SAME_IN_BOTH = ["Language / Idioma", "Log", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "2x", "3x", "4x", "6x", "EDL"];
+    var SAME_IN_BOTH = ["Language / Idioma", "Log", "English", "Português", "Timecode", "Magenta", "DF", "NDF", "−1 s", "+1 s", "−1 frame", "+1 frame", "frames", "EDL"];
 
     var hasOwn = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
 

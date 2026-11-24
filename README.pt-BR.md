@@ -6,7 +6,7 @@ Plugin **UXP** para o Adobe Premiere Pro: um painel para selecionar e editar mar
 
 Mesma identidade visual do [Helmet DL](https://github.com/derpbizinoto/helmet-dl), [Helmet Cutter](https://github.com/derpbizinoto/helmet-cutter) e [Helmet Library](https://github.com/derpbizinoto/helmet-library): tema Clássico (Violet Terminal), Geo no nome e Roboto no resto.
 
-Versão atual: **1.0.0**. O que mudou está no [CHANGELOG.md](CHANGELOG.md).
+Versão atual: **1.0.1**. O que mudou está no [CHANGELOG.md](CHANGELOG.md).
 
 Gratuito e de código aberto ([licença MIT](LICENSE)).
 

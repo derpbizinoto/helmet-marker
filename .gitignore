@@ -20,6 +20,9 @@ plugin/__pre.js
 plugin/__after.js
 plugin/__shot.html
 
+# Atalho de instalação só do autor (não vai para o GitHub)
+copiar-para-premiere.bat
+
 # Temporários
 *.tmp
 *.log

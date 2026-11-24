@@ -48,12 +48,9 @@
         templates: [],
         savedSels: [],
         savedSeqId: null,
-        scrollSpeed: 3,
-        wheelSeen: false,
         lightNext: false,
         pollCount: 0,
         lastRenderMs: 0,
-        scrollSeen: false,
         // fase 3
         impFileName: "",      // nome do arquivo aberto (ajuda a reconhecer o formato)
         impSkip: true,        // pular os que já existem (mesmo frame e nome)
@@ -311,9 +308,7 @@
             frag.appendChild(row);
         });
         list.appendChild(frag);
-        amp.quietUntil.list = Date.now() + 150;   // recriar a lista não é rolagem do usuário
         list.scrollTop = scroll;
-        amp.last.list = list.scrollTop;
 
         renderSelectionInfo();
         if (fieldText("impText")) scheduleImportPreview();
@@ -547,17 +542,8 @@
             lines.push(tr("Marcadores com guid: {0} de {1}", withGuid, state.records.length));
             lines.push(tr("Marcadores fora do frame exato: {0}", state.records.filter(function (r) { return !r.onFrame; }).length));
         }
-        lines.push(tr("Roda do mouse no painel: {0}", state.wheelSeen ? tr("recebida") : tr("ainda não recebida")));
-        lines.push(tr("Aviso de rolagem no painel: {0}", state.scrollSeen ? tr("recebido") : tr("ainda não recebido")));
         lines.push(tr("Última atualização da lista: {0} ms", state.lastRenderMs));
         lines.push(tr("Maior travada do painel (últimos 30 s): {0} ms", lagProbe.max));
-        if (scrollLog.length) {
-            var t0 = scrollLog[0].t;
-            lines.push(tr("Últimos avisos de rolagem (área, ms, posição, passo, o que o painel fez):"));
-            scrollLog.forEach(function (e) {
-                lines.push("  " + e.id + "  +" + (e.t - t0) + "  " + e.cur + "  " + (e.d > 0 ? "+" : "") + e.d + "  " + tr(e.what));
-            });
-        }
         var box = $("diag");
         while (box.childNodes.length > lines.length) box.removeChild(box.lastChild);
         lines.forEach(function (l, i) {
@@ -1540,127 +1526,6 @@
         $("content").style.height = Math.max(80, h - used) + "px";
     }
 
-    // ---------- rolagem com a roda do mouse ----------
-    // A rolagem nativa do painel no Premiere é lenta. Se o UXP entregar o evento "wheel" (a doc
-    // não diz; no 26.5.2 não entrega), o painel rola sozinho N vezes mais. Senão vale o plano B
-    // abaixo. O log mostra se o evento chegou.
-    var SCROLL_KEY = "helmetmarker.scrollSpeed";
-    var SCROLLERS = ["list", "ytPreview", "content"];   // de dentro para fora
-
-    function loadScrollSpeed() {
-        var v = 3;
-        try { v = Number(window.localStorage.getItem(SCROLL_KEY)) || 3; } catch (e) { /* padrão */ }
-        return [1, 2, 3, 4, 6].indexOf(v) >= 0 ? v : 3;
-    }
-
-    function canScroll(el, dy) {
-        if (!el || el.scrollHeight <= el.clientHeight + 1) return false;
-        if (dy < 0) return el.scrollTop > 0;
-        return el.scrollTop + el.clientHeight < el.scrollHeight - 1;
-    }
-
-    function onWheel(e) {
-        if (e.__hmDone) return;                       // o mesmo evento passa por mais de uma área
-        e.__hmDone = true;
-        if (!state.wheelSeen) { state.wheelSeen = true; renderDiagnostics(); }
-        if (state.scrollSpeed <= 1) return;           // "Normal": deixa o Premiere rolar
-        var dy = Number(e.deltaY) || 0;
-        if (!dy) return;
-        if (e.deltaMode === 1) dy *= 16;              // em linhas
-        else if (e.deltaMode === 2) dy *= 300;        // em páginas
-        var box = null;
-        for (var n = e.target; n && !box; n = n.parentNode) {
-            if (n.id && SCROLLERS.indexOf(n.id) >= 0 && canScroll(n, dy)) box = n;
-        }
-        if (!box) return;
-        if (e.preventDefault) e.preventDefault();
-        box.scrollTop = box.scrollTop + dy * state.scrollSpeed;
-    }
-
-    // Plano B (Premiere 26.5.2 não entrega "wheel"): quando a área rola sozinha um passo
-    // pequeno, o painel soma (N − 1) passos iguais na mesma direção. Com o botão do mouse
-    // apertado (arrastando a barra de rolagem) não mexe, para a barra não pular.
-    var amp = { last: {}, own: {}, quietUntil: {}, mouseDown: false, touch: {}, x: -1, y: -1 };
-    // Balanço na ponta: ao chegar no começo ou no fim, o Premiere faz sozinho um "elástico" de
-    // poucos pixels (−10, −19, +10, +29…), até ~1 s depois (log, 26.5.2).
-    // Na velocidade Normal ele quase não aparece; multiplicado virava a engasgada. Então, logo
-    // depois de a área encostar numa ponta, movimentos pequenos não são multiplicados.
-    var EDGE_QUIET_MS = 1500;
-    var EDGE_SMALL_PX = 60;
-    var scrollLog = [];       // últimos avisos de rolagem (log), para achar engasgadas
-    function logScroll(id, cur, d, what) {
-        scrollLog.push({ t: Date.now(), id: id, cur: Math.round(cur), d: Math.round(d), what: what });
-        if (scrollLog.length > 8) scrollLog.shift();
-    }
-    // Fim da área. (A conta pode sair um pouco antes do fim real no UXP; por isso só serve
-    // para saber se encostou, nunca para limitar a rolagem.)
-    function maxScroll(el) { return Math.max(0, (el.scrollHeight || 0) - (el.clientHeight || 0)); }
-    var SCROLLBAR_ZONE = 24;   // px junto à borda direita: área da barra de rolagem
-
-    // Arrastar a barra de rolagem também gera passos pequenos, e o Premiere não entrega o clique
-    // na barra (testado no 26.5.2: "várias engasgadas"). Então, com o cursor perto da borda
-    // direita da área, o painel não multiplica nada.
-    function nearScrollbar(el) {
-        if (amp.x < 0 || !el.getBoundingClientRect) return false;
-        var r = el.getBoundingClientRect();
-        return amp.x >= r.right - SCROLLBAR_ZONE && amp.x <= r.right + 4 && amp.y >= r.top && amp.y <= r.bottom;
-    }
-
-    // Cada aviso de rolagem pequeno é multiplicado, menos: os causados pelo próprio painel, os
-    // de redesenho da lista, os da barra de rolagem, os saltos grandes e o balanço logo depois
-    // de encostar numa ponta (ver EDGE_QUIET_MS). Cada decisão vai para o log.
-    function onScrollAmplify(e) {
-        var el = e.currentTarget || e.target;
-        if (!el || !el.id) return;
-        var id = el.id;
-        if (!state.scrollSeen) { state.scrollSeen = true; renderDiagnostics(); }
-        var cur = el.scrollTop, last = amp.last[id];
-        amp.last[id] = cur;
-        // encostou numa ponta (em qualquer aviso, inclusive os nossos): marca a hora
-        if (cur <= 0 || cur >= maxScroll(el) - 2) amp.touch[id] = Date.now();
-        if (amp.own[id]) { amp.own[id] = false; return; }          // rolagem feita por nós
-        if (amp.quietUntil && amp.quietUntil[id] > Date.now()) return;   // lista sendo redesenhada
-        if (state.wheelSeen || state.scrollSpeed <= 1 || amp.mouseDown || last === undefined) return;
-        var d = cur - last;
-        if (nearScrollbar(el)) { logScroll(id, cur, d, "barra"); return; }   // arrastando a barra
-        if (!d || Math.abs(d) > 200) { logScroll(id, cur, d, "ignorou"); return; }               // salto grande: não é a roda
-
-        var now = Date.now();
-        if (amp.touch[id] && now - amp.touch[id] < EDGE_QUIET_MS && Math.abs(d) < EDGE_SMALL_PX) {
-            logScroll(id, cur, d, "ponta");                           // balanço do Premiere: deixa como está
-            return;
-        }
-        setScroll(el, id, Math.max(0, cur + d * (state.scrollSpeed - 1)));
-        logScroll(id, cur, d, "multiplicou");
-    }
-
-    function setScroll(el, id, pos) {
-        amp.own[id] = true;
-        var before = el.scrollTop;
-        el.scrollTop = pos;
-        if (el.scrollTop === before) amp.own[id] = false;             // não mexeu: não vem aviso
-        amp.last[id] = el.scrollTop;
-        return el.scrollTop;
-    }
-
-    function setupScrolling() {
-        SCROLLERS.forEach(function (id) {
-            var el = $(id);
-            el.addEventListener("wheel", onWheel, { passive: false });
-            el.addEventListener("scroll", onScrollAmplify);
-            amp.last[id] = el.scrollTop;
-        });
-        ["mousemove", "pointermove"].forEach(function (ev) {
-            document.addEventListener(ev, function (e) { amp.x = e.clientX; amp.y = e.clientY; });
-        });
-        ["mousedown", "pointerdown"].forEach(function (ev) {
-            document.addEventListener(ev, function () { amp.mouseDown = true; });
-        });
-        ["mouseup", "pointerup"].forEach(function (ev) {
-            document.addEventListener(ev, function () { amp.mouseDown = false; });
-        });
-    }
-
     // ---------- início ----------
     // Botões são <div role="button"> (o UXP não deixa estilizar <button>). Desligado = classe
     // "is-disabled", e o clique num botão desligado é ignorado aqui.
@@ -1681,14 +1546,6 @@
         setTimeout(fitContent, 300);
         show($("confirmBar"), false);
         $("version").textContent = "v" + HM_VERSION;
-
-        state.scrollSpeed = loadScrollSpeed();
-        $("scrollSpeed").value = String(state.scrollSpeed);
-        on("scrollSpeed", "change", function () {
-            state.scrollSpeed = Number(selValue("scrollSpeed")) || 1;
-            try { window.localStorage.setItem(SCROLL_KEY, String(state.scrollSpeed)); } catch (e) { /* só nesta sessão */ }
-        });
-        setupScrolling();
 
         var lang = $("langSelect");
         lang.value = HMI18n.lang();

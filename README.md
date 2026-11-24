@@ -6,7 +6,7 @@ A **UXP** plugin for Adobe Premiere Pro: a panel to select and edit markers in b
 
 Same visual identity as [Helmet DL](https://github.com/derpbizinoto/helmet-dl), [Helmet Cutter](https://github.com/derpbizinoto/helmet-cutter) and [Helmet Library](https://github.com/derpbizinoto/helmet-library): Classic theme (Violet Terminal), Geo for the name and Roboto everywhere else.
 
-Current version: **1.0.0**. What changed is in [CHANGELOG.md](CHANGELOG.md) (Portuguese).
+Current version: **1.0.1**. What changed is in [CHANGELOG.md](CHANGELOG.md) (Portuguese).
 
 Free and open source ([MIT license](LICENSE)).
 

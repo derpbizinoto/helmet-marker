@@ -1,5 +1,9 @@
 # Novidades
 
+## 1.0.1
+
+- Rolagem na velocidade normal do Premiere: saíram a escolha de velocidade (Ferramentas) e a aceleração da rolagem, que só existiam para disfarçar o lag das versões antigas. Ferramentas agora mostra só o log.
+
 ## 1.0.0 — primeira versão estável
 
 - Reúne tudo das versões 0.1 a 0.3 (abaixo), com o código inteiro revisado e testado no Premiere 26.5.
